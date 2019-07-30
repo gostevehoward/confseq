@@ -16,7 +16,7 @@ the package.
 
 ## Installing the python package
 
-Run `pip install confseq`.
+Run `pip3 install confseq`.
 
 ## Demos
 
