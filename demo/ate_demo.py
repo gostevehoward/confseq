@@ -38,16 +38,11 @@ def estimate_average_treatment_effect(outcomes, treatments, propensity,
     support_diameter = support_bounds[1] - support_bounds[0]
     c = 2 * support_diameter / p_min
     t_array = np.arange(1.0, len(outcomes) + 1.0)
-    p_value = np.fromiter(
-        (math.exp(-boundaries.gamma_exponential_log_mixture(
-             s, v, v_opt, c, alpha_opt=alpha_opt / 2))
-         for s, v in zip(St, Vt)),
-        np.float)
-    confidence_radius = np.fromiter(
-        (1.0 / t * boundaries.gamma_exponential_mixture_bound(
-            v, coverage_alpha / 2, v_opt, c, alpha_opt=alpha_opt / 2)
-         for t, v in zip(t_array, Vt)),
-        np.float)
+    p_value = np.exp(-boundaries.gamma_exponential_log_mixture(
+             St, Vt, v_opt, c, alpha_opt=alpha_opt / 2))
+    confidence_radius = (
+        1.0 / t_array * boundaries.gamma_exponential_mixture_bound(
+            Vt, coverage_alpha / 2, v_opt, c, alpha_opt=alpha_opt / 2))
     return pd.DataFrame(collections.OrderedDict([
         ('t', t_array),
         ('point_estimate', St / t_array),

@@ -62,6 +62,8 @@ paper.
   function requires the tuning parameter `v_min` as well as optional parameters
   `c`, `s`, and `eta`, all documented in the paper.
 
+All functions accept NumPy arrays and perform vectorized operations.
+
 ## C++ library
 
 The underlying implementation is in a single-file, header-only C++ library in

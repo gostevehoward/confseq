@@ -104,7 +104,7 @@ setup(
     packages=find_packages('src'),
     package_dir={'': 'src'},
     ext_modules=ext_modules,
-    install_requires=['pybind11>=2.3'],
+    install_requires=['pybind11>=2.3', 'numpy'],
     setup_requires=['pybind11>=2.3'],
     cmdclass={'build_ext': BuildExt},
     zip_safe=False,

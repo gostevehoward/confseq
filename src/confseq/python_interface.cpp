@@ -1,3 +1,4 @@
+#include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 
 #include "uniform_boundaries.h"
@@ -22,19 +23,22 @@ PYBIND11_MODULE(boundaries, m) {
     )pbdoc";
 
   m.def("normal_log_mixture",
-        &confseq::normal_log_mixture, R"pbdoc(
+        pybind11::vectorize(confseq::normal_log_mixture),
+        R"pbdoc(
           Logarithm of mixture supermartingale for the one- or two-sided normal
           mixture.
         )pbdoc",
         "s"_a, "v"_a, "v_opt"_a, "alpha_opt"_a=0.05, "is_one_sided"_a=true);
   m.def("normal_mixture_bound",
-        &confseq::normal_mixture_bound, R"pbdoc(
+        pybind11::vectorize(confseq::normal_mixture_bound),
+        R"pbdoc(
           One- or two-sided normal mixture uniform boundary.
         )pbdoc",
         "v"_a, "alpha"_a, "v_opt"_a, "alpha_opt"_a=0.05,
         "is_one_sided"_a=true);
   m.def("gamma_exponential_log_mixture",
-        &confseq::gamma_exponential_log_mixture, R"pbdoc(
+        pybind11::vectorize(confseq::gamma_exponential_log_mixture),
+        R"pbdoc(
           Logarithm of mixture supermartingale for the gamma-exponential
           mixture.
 
@@ -42,28 +46,32 @@ PYBIND11_MODULE(boundaries, m) {
         )pbdoc",
         "s"_a, "v"_a, "v_opt"_a, "c"_a, "alpha_opt"_a=0.05);
   m.def("gamma_exponential_mixture_bound",
-        &confseq::gamma_exponential_mixture_bound, R"pbdoc(
+        pybind11::vectorize(confseq::gamma_exponential_mixture_bound),
+        R"pbdoc(
           Gamma-exponential mixture uniform boundary.
 
           `c` is the sub-exponential scale parameter.
         )pbdoc",
         "v"_a, "alpha"_a, "v_opt"_a, "c"_a, "alpha_opt"_a=0.05);
   m.def("gamma_poisson_log_mixture",
-        &confseq::gamma_poisson_log_mixture, R"pbdoc(
+        pybind11::vectorize(confseq::gamma_poisson_log_mixture),
+        R"pbdoc(
           Logarithm of mixture supermartingale for the gamma-Poisson mixture.
 
           `c` is the sub-Poisson scale parameter.
         )pbdoc",
         "s"_a, "v"_a, "v_opt"_a, "c"_a, "alpha_opt"_a=0.05);
   m.def("gamma_poisson_mixture_bound",
-        &confseq::gamma_poisson_mixture_bound, R"pbdoc(
+        pybind11::vectorize(confseq::gamma_poisson_mixture_bound),
+        R"pbdoc(
           Gamma-Poisson mixture uniform boundary.
 
           `c` is the sub-Poisson scale parameter.
         )pbdoc",
         "v"_a, "alpha"_a, "v_opt"_a, "c"_a, "alpha_opt"_a=0.05);
   m.def("beta_binomial_log_mixture",
-        &confseq::beta_binomial_log_mixture, R"pbdoc(
+        pybind11::vectorize(confseq::beta_binomial_log_mixture),
+        R"pbdoc(
           Logarithm of mixture supermartingale for the one- or two-sided
           beta-binomial mixture.
 
@@ -72,14 +80,17 @@ PYBIND11_MODULE(boundaries, m) {
         "s"_a, "v"_a, "v_opt"_a, "g"_a, "h"_a, "alpha_opt"_a=0.05,
         "is_one_sided"_a=true);
   m.def("beta_binomial_mixture_bound",
-        &confseq::beta_binomial_mixture_bound, R"pbdoc(
+        pybind11::vectorize(confseq::beta_binomial_mixture_bound),
+        R"pbdoc(
           One- or two-sided beta-binomial mixture uniform boundary.
 
           `g` and `h` are the sub-Bernoulli range parameter.
         )pbdoc",
         "v"_a, "alpha"_a, "v_opt"_a, "g"_a, "h"_a, "alpha_opt"_a=0.05,
         "is_one_sided"_a=true);
-  m.def("poly_stitching_bound", &confseq::poly_stitching_bound, R"pbdoc(
+  m.def("poly_stitching_bound",
+        pybind11::vectorize(confseq::poly_stitching_bound),
+        R"pbdoc(
           Polynomial stitched uniform boundary.
 
           * `v_min`: optimized-for intrinsic time
