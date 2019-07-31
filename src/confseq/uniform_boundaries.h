@@ -1,10 +1,12 @@
 #ifndef CONFIDENCESEQUENCES_UNIFORM_BOUNDARIES_H_
 #define CONFIDENCESEQUENCES_UNIFORM_BOUNDARIES_H_
 
+#include <boost/cstdint.hpp>
 #include <boost/math/distributions/normal.hpp>
 #include <boost/math/special_functions/beta.hpp>
 #include <boost/math/special_functions/gamma.hpp>
 #include <boost/math/special_functions/zeta.hpp>
+#include <boost/math/tools/minima.hpp>
 #include <boost/math/tools/roots.hpp>
 
 namespace confseq {
@@ -50,6 +52,9 @@ double beta_binomial_mixture_bound(
 double poly_stitching_bound(const double v, const double alpha,
                             const double v_min, const double c=0,
                             const double s=1.4, const double eta=2);
+
+double empirical_process_lil_bound(const int t, const double alpha,
+                                   const double t_min, const double A=0.85);
 
 //////////////////////////////////////////////////////////////////////
 // Object-oriented interface
@@ -156,8 +161,8 @@ class BetaBinomialMixture : public MixtureSupermartingale {
 
   BetaBinomialMixture(double v_opt, double alpha_opt, double g, double h,
                       bool is_one_sided)
-      : r_((is_one_sided? OneSidedNormalMixture::best_rho(v_opt, alpha_opt)
-                        : TwoSidedNormalMixture::best_rho(v_opt, alpha_opt))
+      : r_((is_one_sided ? OneSidedNormalMixture::best_rho(v_opt, alpha_opt)
+                         : TwoSidedNormalMixture::best_rho(v_opt, alpha_opt))
            - g * h),
         g_(g), h_(h), is_one_sided_(is_one_sided) {
     assert(g > 0);
@@ -212,6 +217,26 @@ private:
   std::unique_ptr<MixtureSupermartingale> mixture_superMG_;
 };
 
+class EmpiricalProcessLIL {
+ public:
+  EmpiricalProcessLIL(const double alpha, const double t_min, const double A)
+      : t_min_(t_min), A_(A) {
+    assert(A > 1 / sqrt(2));
+    assert(t_min >= 1);
+    assert(0 < alpha && alpha < 1);
+    C_ = find_optimal_C(alpha, A);
+  }
+
+  double operator()(const double t) const;
+
+ private:
+  static double find_optimal_C(const double alpha, const double A);
+
+  const double t_min_;
+  const double A_;
+  double C_;
+};
+
 //////////////////////////////////////////////////////////////////////
 // Implementation
 //////////////////////////////////////////////////////////////////////
@@ -237,7 +262,6 @@ double find_mixture_bound(const MixtureSupermartingale& mixture_superMG,
   if (s_upper_bound == std::numeric_limits<double>::infinity()) {
     s_upper_bound = find_s_upper_bound(mixture_superMG, v, log_threshold);
   }
-  // TODO: deal with infinite upper bound
   auto result = boost::math::tools::bisect(
       root_fn, 0.0, s_upper_bound,
       boost::math::tools::eps_tolerance<double>(40));
@@ -346,6 +370,51 @@ double PolyStitchingBound::operator()(double v, double alpha) const {
   return sqrt(k1_ * k1_ * use_v * ell + term2 * term2) + term2;
 }
 
+double EmpiricalProcessLIL::operator()(const double t) const {
+  if (t < t_min_) {
+    return std::numeric_limits<double>::infinity();
+  } else {
+    return A_ * sqrt((log(1 + log(t / t_min_)) + C_) / t);
+  }
+}
+
+double EmpiricalProcessLIL::find_optimal_C(const double alpha, const double A) {
+  using namespace std::placeholders;
+
+  auto error_bound = [A](const double C, const double eta) {
+    const double gamma_sq = 2 / eta * pow(A - sqrt(2 * (eta - 1) / C), 2);
+    if (gamma_sq <= 1) {
+      return std::numeric_limits<double>::infinity();
+    } else {
+      return 4 * exp(-gamma_sq * C) * (1 + 1 / ((gamma_sq - 1) * log(eta)));
+    }
+  };
+
+  auto optimum_error = [A, error_bound](const double C) {
+    auto eta_upper_result = boost::math::tools::bisect(
+        [A, C](const double eta) {
+          return sqrt(eta / 2) + sqrt(2 * (eta - 1) / C) - A;
+        },
+        1.0, 2 * A * A, boost::math::tools::eps_tolerance<double>(40));
+    double eta_upper = (eta_upper_result.first + eta_upper_result.second) / 2;
+    return boost::math::tools::brent_find_minima(std::bind(error_bound, C, _1),
+                                                 1.0, eta_upper, 24);
+  };
+
+  boost::uintmax_t max_iter = 50;
+  auto C_result = boost::math::tools::bracket_and_solve_root(
+      [alpha, optimum_error](const double C) {
+        return optimum_error(C).second - alpha;
+      },
+      5.0,
+      2.0,
+      false,
+      boost::math::tools::eps_tolerance<double>(40),
+      max_iter);
+  return (C_result.first + C_result.second) / 2;
+}
+
+
 double normal_log_mixture(const double s, const double v, const double v_opt,
                           const double alpha_opt,
                           const bool is_one_sided) {
@@ -419,6 +488,12 @@ double poly_stitching_bound(const double v, const double alpha,
                             const double s, const double eta) {
   PolyStitchingBound bound(v_min, c, s, eta);
   return bound(v, alpha);
+}
+
+double empirical_process_lil_bound(const int t, const double alpha,
+                                   const double t_min, const double A) {
+  EmpiricalProcessLIL bound(alpha, t_min, A);
+  return bound(t);
 }
 
 }; // namespace confseq

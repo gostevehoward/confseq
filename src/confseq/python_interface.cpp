@@ -99,4 +99,10 @@ PYBIND11_MODULE(boundaries, m) {
           * `eta`: controls the spacing of epochs
         )pbdoc",
         "v"_a, "alpha"_a, "v_min"_a, "c"_a=0, "s"_a=1.4, "eta"_a=2);
+  m.def("empirical_process_lil_bound",
+        pybind11::vectorize(confseq::empirical_process_lil_bound),
+        R"pbdoc(
+          Empirical process finite LIL bound. TODO
+        )pbdoc",
+        "t"_a, "alpha"_a, "t_min"_a, "A"_a=0.85);
 }

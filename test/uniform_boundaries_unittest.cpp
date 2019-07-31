@@ -57,4 +57,9 @@ TEST(PolyStitchingTest, NegativeC) {
   EXPECT_NEAR(bound(100, 0.05), 28.99389, 1e-5);
 }
 
+TEST(EmpiricalProcessLILTest, TestBound) {
+  EXPECT_NEAR(confseq::empirical_process_lil_bound(1000, .05, 100, 0.85),
+              0.08204769, 1e-5);
+}
+
 } // namespace
