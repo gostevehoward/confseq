@@ -102,7 +102,33 @@ PYBIND11_MODULE(boundaries, m) {
   m.def("empirical_process_lil_bound",
         pybind11::vectorize(confseq::empirical_process_lil_bound),
         R"pbdoc(
-          Empirical process finite LIL bound. TODO
+          Empirical process finite LIL bound.
+
+          Based on Theorem 2 of the quantile paper. Bound has the form
+          `A sqrt((loglog(et / t_min) + C) / t)`, and is valid only for
+          t >= t_min. C is chosen to achieve the desired error probability
+          `alpha`.
+
+          This bound controls the deviations of the empirical CDF from the true
+          CDF uniformly over x and time, or yields a confidence sequences
+          uniform over quantiles and time (Corollary 2 of the quantile paper).
+
+          * `A`: leading constant in the bound
         )pbdoc",
         "t"_a, "alpha"_a, "t_min"_a, "A"_a=0.85);
+  m.def("double_stitching_bound",
+        pybind11::vectorize(confseq::double_stitching_bound),
+        R"pbdoc(
+          "Double stitching" bound (Theorem 3 of the quantile paper).
+
+          Yields a confidence sequence uniform over quantiles and time.
+
+          * `p`: designates which quantile we wish to bound
+          * `delta`: controls the fineness of the quantile grid used in
+            construction of the bound
+          * `s`: controls how crossing probability is distribted over epochs
+          * `eta`: controls the spacing of epochs
+        )pbdoc",
+        "p"_a, "t"_a, "alpha"_a, "t_opt"_a, "delta"_a=0.5, "s"_a=1.4,
+        "eta"_a=2);
 }

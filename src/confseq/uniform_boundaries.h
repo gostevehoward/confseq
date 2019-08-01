@@ -56,6 +56,11 @@ double poly_stitching_bound(const double v, const double alpha,
 double empirical_process_lil_bound(const int t, const double alpha,
                                    const double t_min, const double A=0.85);
 
+double double_stitching_bound(const double p, const double t,
+                              const double alpha, const double t_opt,
+                              const double delta=0.5, const double s=1.4,
+                              const double eta=2);
+
 //////////////////////////////////////////////////////////////////////
 // Object-oriented interface
 //////////////////////////////////////////////////////////////////////
@@ -217,9 +222,10 @@ private:
   std::unique_ptr<MixtureSupermartingale> mixture_superMG_;
 };
 
-class EmpiricalProcessLIL {
+class EmpiricalProcessLILBound {
  public:
-  EmpiricalProcessLIL(const double alpha, const double t_min, const double A)
+  EmpiricalProcessLILBound(const double alpha, const double t_min,
+                           const double A)
       : t_min_(t_min), A_(A) {
     assert(A > 1 / sqrt(2));
     assert(t_min >= 1);
@@ -235,6 +241,31 @@ class EmpiricalProcessLIL {
   const double t_min_;
   const double A_;
   double C_;
+};
+
+class DoubleStitchingBound {
+ public:
+  DoubleStitchingBound(const int t_opt, const double delta, const double s,
+                       const double eta)
+      : t_opt_(t_opt), delta_(delta), s_(s), eta_(eta),
+        k1_((pow(eta, .25) + pow(eta, -.25)) / sqrt(2)),
+        k2_((sqrt(eta) + 1) / 2)
+  {
+    assert(t_opt_ >= 1);
+    assert(delta_ > 0);
+    assert(s > 0);
+    assert(eta > 0);
+  }
+
+  double operator()(const double p, const double t, const double alpha) const;
+
+ private:
+  const double t_opt_;
+  const double delta_;
+  const double s_;
+  const double eta_;
+  const double k1_;
+  const double k2_;
 };
 
 //////////////////////////////////////////////////////////////////////
@@ -370,7 +401,7 @@ double PolyStitchingBound::operator()(double v, double alpha) const {
   return sqrt(k1_ * k1_ * use_v * ell + term2 * term2) + term2;
 }
 
-double EmpiricalProcessLIL::operator()(const double t) const {
+double EmpiricalProcessLILBound::operator()(const double t) const {
   if (t < t_min_) {
     return std::numeric_limits<double>::infinity();
   } else {
@@ -378,7 +409,8 @@ double EmpiricalProcessLIL::operator()(const double t) const {
   }
 }
 
-double EmpiricalProcessLIL::find_optimal_C(const double alpha, const double A) {
+double EmpiricalProcessLILBound::find_optimal_C(const double alpha,
+                                                const double A) {
   using namespace std::placeholders;
 
   auto error_bound = [A](const double C, const double eta) {
@@ -414,6 +446,31 @@ double EmpiricalProcessLIL::find_optimal_C(const double alpha, const double A) {
   return (C_result.first + C_result.second) / 2;
 }
 
+double logit(const double p) {
+  assert(0 < 1 && p < 1);
+  return log(p / (1 - p));
+}
+
+double expit(const double l) {
+  return 1 / (1 + exp(-l));
+}
+
+double DoubleStitchingBound::operator()(const double p, const double t,
+                                        const double alpha) const {
+  const double t_max_m = std::max(t, t_opt_);
+  const double r = p >= 0.5 ? p
+      : std::min(0.5, expit(logit(p) + 2 * delta_ *
+                            sqrt(t_opt_ * eta_ / t_max_m)));
+  const double sigma_sq = r * (1 - r);
+  const double j = sqrt(t_max_m / t_opt_) * abs(logit(p)) / (2 * delta_) + 1;
+  const double zeta_s = boost::math::zeta(s_);
+  const double ell = s_ * log(log(eta_ * t_max_m / t_opt_)) + s_ * log(j)
+       + log(2 * zeta_s * (2 * zeta_s + 1) / (alpha * pow(log(eta_), s_)));
+  const double cp = (1 - 2 * p) / 3;
+  const double term2 = k2_ * cp * ell;
+  return delta_ * sqrt(eta_ * t_max_m * sigma_sq / t_opt_)
+      + sqrt(k1_ * k1_ * sigma_sq * t_max_m * ell + term2 * term2) + term2;
+}
 
 double normal_log_mixture(const double s, const double v, const double v_opt,
                           const double alpha_opt,
@@ -492,8 +549,16 @@ double poly_stitching_bound(const double v, const double alpha,
 
 double empirical_process_lil_bound(const int t, const double alpha,
                                    const double t_min, const double A) {
-  EmpiricalProcessLIL bound(alpha, t_min, A);
+  EmpiricalProcessLILBound bound(alpha, t_min, A);
   return bound(t);
+}
+
+double double_stitching_bound(const double p, const double t,
+                              const double alpha, const double t_opt,
+                              const double delta, const double s,
+                              const double eta) {
+  DoubleStitchingBound bound(t_opt, delta, s, eta);
+  return bound(p, t, alpha);
 }
 
 }; // namespace confseq

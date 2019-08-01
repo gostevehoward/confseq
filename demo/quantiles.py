@@ -25,8 +25,15 @@ def fixed_quantile_confidence_bounds(values, p, t_opt, alpha=0.05,
     return quantile_confidence_bound(values, p, lower_boundary / t,
                                      upper_boundary / t)
 
-def uniform_quantile_confidence_bounds(values, p, t_min, alpha=0.05):
+def uniform_quantile_confidence_bounds(values, p, t_min, alpha=0.05,
+                                       use_double_stitching=False):
     sorted_values = sorted(values)
     t = len(values)
-    bound = boundaries.empirical_process_lil_bound(t, alpha, t_min);
-    return quantile_confidence_bound(values, p, bound, bound)
+    if use_double_stitching:
+        upper_bound = boundaries.double_stitching_bound(p, t, alpha, t_min) / t
+        lower_bound = (
+            boundaries.double_stitching_bound(1 - p, t, alpha, t_min) / t)
+    else:
+        upper_bound = boundaries.empirical_process_lil_bound(t, alpha, t_min)
+        lower_bound = upper_bound
+    return quantile_confidence_bound(values, p, lower_bound, upper_bound)

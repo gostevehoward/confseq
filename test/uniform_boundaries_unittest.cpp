@@ -62,4 +62,13 @@ TEST(EmpiricalProcessLILTest, TestBound) {
               0.08204769, 1e-5);
 }
 
+TEST(DoubleStitchingTest, TestBound) {
+  EXPECT_NEAR(confseq::double_stitching_bound(0.5, 1000, 0.05, 100),
+              68.62803, 1e-5);
+  EXPECT_NEAR(confseq::double_stitching_bound(0.9, 1000, 0.05, 100),
+              43.72119, 1e-5);
+  EXPECT_NEAR(confseq::double_stitching_bound(0.1, 1000, 0.05, 100),
+              59.96521, 1e-5);
+}
+
 } // namespace
