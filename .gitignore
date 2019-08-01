@@ -5,3 +5,4 @@ var
 __pycache__
 dist
 build
+venv
