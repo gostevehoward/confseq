@@ -1,4 +1,5 @@
-#include <random>
+#include <array>
+#include <numeric>
 
 #include "uniform_boundaries.h"
 
@@ -69,6 +70,48 @@ TEST(DoubleStitchingTest, TestBound) {
               43.72119, 1e-5);
   EXPECT_NEAR(confseq::double_stitching_bound(0.1, 1000, 0.05, 100),
               59.96521, 1e-5);
+}
+
+TEST(StaticOrderStatisticsTest, TestBasics) {
+  std::array<int, 5> values = {1, 2, 3, 3, 5};
+  confseq::StaticOrderStatistics os(values.begin(), values.end());
+  EXPECT_EQ(os.size(), 5);
+  EXPECT_EQ(os.get_order_statistic(1), 1);
+  EXPECT_EQ(os.get_order_statistic(4), 3);
+  EXPECT_EQ(os.get_order_statistic(5), 5);
+  EXPECT_EQ(os.count_less(-1), 0);
+  EXPECT_EQ(os.count_less_or_equal(-1), 0);
+  EXPECT_EQ(os.count_less(1), 0);
+  EXPECT_EQ(os.count_less_or_equal(1), 1);
+  EXPECT_EQ(os.count_less(3), 2);
+  EXPECT_EQ(os.count_less_or_equal(3), 4);
+  EXPECT_EQ(os.count_less(5), 4);
+  EXPECT_EQ(os.count_less_or_equal(5), 5);
+  EXPECT_EQ(os.count_less(10), 5);
+  EXPECT_EQ(os.count_less_or_equal(10), 5);
+}
+
+double get_ab_p_value(const double quantile_p, const int offset) {
+  std::array<int, 1000> a_values;
+  std::iota(a_values.begin(), a_values.end(), 1);
+  std::array<int, 1000> b_values;
+  std::iota(b_values.begin(), b_values.end(), offset + 1);
+
+  auto a_os = std::make_unique<confseq::StaticOrderStatistics>(
+      a_values.begin(), a_values.end());
+  auto b_os = std::make_unique<confseq::StaticOrderStatistics>(
+      b_values.begin(), b_values.end());
+  confseq::QuantileABTest test(quantile_p, 100, 0.05, std::move(a_os),
+                               std::move(b_os));
+
+  return test.p_value();
+}
+
+TEST(QuantileABTest, TestPValue) {
+  EXPECT_NEAR(get_ab_p_value(0.5, 70), 0.814704, 1e-5);
+  EXPECT_NEAR(get_ab_p_value(0.5, 85), 0.0838055, 1e-5);
+  EXPECT_NEAR(get_ab_p_value(0.5, 100), 0.0054947, 1e-5);
+  EXPECT_NEAR(get_ab_p_value(0.9, 55), 0.0340463, 1e-5);
 }
 
 } // namespace

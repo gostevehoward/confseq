@@ -9,6 +9,13 @@ S. R. Howard, A. Ramdas, J. McAuliffe, J. Sekhon. [Uniform, nonparametric,
 non-asymptotic confidence
 sequences](https://arxiv.org/abs/1810.08240). Preprint, arXiv:1810.08240.
 
+Additionally, the library includes some functions for quantile confidence
+sequences and A/B testing based on
+
+S. R. Howard, A. Ramdas. [Sequential estimation of quantiles with applications
+to A/B-testing and best-arm
+identification](https://arxiv.org/abs/1906.09712). Preprint, arXiv:1906.09712.
+
 This library is in early-stage development and should not be considered
 stable. I have tested it only on Python 3.7.0 on macOS Mojave. The
 implementation is in C++ and a compiler with C++14 support is required to build
@@ -28,10 +35,18 @@ with an always-valid p-value sequence. The method is based on Corollary 2 of the
 paper and uses the gamma-exponential mixture boundary. This demo requires
 `numpy` and `pandas`.
 
+### Quantile confidence sequences
+
+`demo/quantiles.py` illustrates how to use some of the included boundaries to
+construct confidence sequences for quantiles based on a stream of
+i.i.d. samples. The file includes a function to estimate a single, fixed
+quantile, as well as a function to estimate all quantiles simultaneously, with
+error control uniform over quantiles and time.
+
 ## Uniform boundaries
 
 The `confseq.boundaries` module implements several uniform boundaries from the
-paper.
+confidence sequences paper.
 
 * There are four mixture boundaries. These are implemented by the functions
   `<TYPE>_log_mixture()` and `<TYPE>_mixture_bound()`, where `<TYPE>` is one of
@@ -63,6 +78,25 @@ paper.
   `c`, `s`, and `eta`, all documented in the paper.
 
 All functions accept NumPy arrays and perform vectorized operations.
+
+## Quantile bounds
+
+The `confseq.quantiles` module implements two quantile-uniform confidence
+sequences from the quantile paper.
+
+* `empirical_process_lil_bound` is based on Theorem 2, and can be used to
+  construct iterated-logarithm-rate confidence sequences for quantiles in which
+  the confidence radius (in quantile space) is constant for all quantiles. This
+  can also be used run the sequential Kolmogorov-Smirnov test described in
+  section 7.2.
+* `double_stitching_bound` is based on Theorem 3, and can be used to construct
+  confidence sequences for quantiles in which the confidence radius (in quantile
+  space) varies, getting smaller for extreme quantiles close to zero and one.
+
+Finally, `quantile_ab_p_value` implements the two-sided sequential test of the
+hypothesis that two populations have equal values for some quantile, based on
+Theorem 5. The theorem covers tests of null hypothesis other than equality, as
+well as one-sided tests, but these are not yet implemented.
 
 ## C++ library
 

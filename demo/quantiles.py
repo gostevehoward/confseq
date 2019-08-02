@@ -1,6 +1,7 @@
 import math
 
 from confseq import boundaries
+from confseq import quantiles
 
 def quantile_confidence_bound(values, p, lower_radius, upper_radius):
     sorted_values = sorted(values)
@@ -30,10 +31,10 @@ def uniform_quantile_confidence_bounds(values, p, t_min, alpha=0.05,
     sorted_values = sorted(values)
     t = len(values)
     if use_double_stitching:
-        upper_bound = boundaries.double_stitching_bound(p, t, alpha, t_min) / t
+        upper_bound = quantiles.double_stitching_bound(p, t, alpha, t_min) / t
         lower_bound = (
-            boundaries.double_stitching_bound(1 - p, t, alpha, t_min) / t)
+            quantiles.double_stitching_bound(1 - p, t, alpha, t_min) / t)
     else:
-        upper_bound = boundaries.empirical_process_lil_bound(t, alpha, t_min)
+        upper_bound = quantiles.empirical_process_lil_bound(t, alpha, t_min)
         lower_bound = upper_bound
     return quantile_confidence_bound(values, p, lower_bound, upper_bound)

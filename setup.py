@@ -26,7 +26,17 @@ class get_pybind_include(object):
 ext_modules = [
     Extension(
         'confseq.boundaries',
-        ['src/confseq/python_interface.cpp'],
+        ['src/confseq/boundaries.cpp'],
+        include_dirs=[
+            # Path to pybind11 headers
+            get_pybind_include(),
+            get_pybind_include(user=True)
+        ],
+        language='c++'
+    ),
+    Extension(
+        'confseq.quantiles',
+        ['src/confseq/quantiles.cpp'],
         include_dirs=[
             # Path to pybind11 headers
             get_pybind_include(),

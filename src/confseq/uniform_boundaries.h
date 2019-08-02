@@ -1,6 +1,10 @@
 #ifndef CONFIDENCESEQUENCES_UNIFORM_BOUNDARIES_H_
 #define CONFIDENCESEQUENCES_UNIFORM_BOUNDARIES_H_
 
+#include <algorithm>
+#include <set>
+#include <vector>
+
 #include <boost/cstdint.hpp>
 #include <boost/math/distributions/normal.hpp>
 #include <boost/math/special_functions/beta.hpp>
@@ -56,7 +60,7 @@ double poly_stitching_bound(const double v, const double alpha,
 double empirical_process_lil_bound(const int t, const double alpha,
                                    const double t_min, const double A=0.85);
 
-double double_stitching_bound(const double p, const double t,
+double double_stitching_bound(const double quantile_p, const double t,
                               const double alpha, const double t_opt,
                               const double delta=0.5, const double s=1.4,
                               const double eta=2);
@@ -268,6 +272,82 @@ class DoubleStitchingBound {
   const double k2_;
 };
 
+class OrderStatisticInterface {
+ public:
+  virtual ~OrderStatisticInterface() {}
+  virtual double get_order_statistic(const int order_index) const = 0;
+  virtual int count_less(const double value) const = 0;
+  virtual int count_less_or_equal(const double value) const = 0;
+  virtual int size() const = 0;
+};
+
+class StaticOrderStatistics : public OrderStatisticInterface {
+ public:
+  template <class InputIt> StaticOrderStatistics(InputIt first, InputIt last)
+      : sorted_values_(first, last) {
+    std::sort(sorted_values_.begin(), sorted_values_.end());
+  }
+
+  virtual double get_order_statistic(const int order_index) const override {
+    return sorted_values_[order_index - 1];
+  }
+
+  virtual int count_less(const double value) const override {
+    return std::lower_bound(sorted_values_.begin(), sorted_values_.end(), value)
+        - sorted_values_.begin();
+  }
+  virtual int count_less_or_equal(const double value) const override {
+    return std::upper_bound(sorted_values_.begin(), sorted_values_.end(), value)
+        - sorted_values_.begin();
+  }
+
+  virtual int size() const override {
+    return sorted_values_.size();
+  }
+
+ private:
+  std::vector<double> sorted_values_;
+};
+
+class QuantileABTest {
+ public:
+  QuantileABTest(const double quantile_p, const int t_opt,
+                 const double alpha_opt,
+                 std::unique_ptr<OrderStatisticInterface>&& arm1_os,
+                 std::unique_ptr<OrderStatisticInterface>&& arm2_os)
+      : quantile_p_(quantile_p),
+        mixture_(std::make_unique<BetaBinomialMixture>(
+            t_opt * quantile_p * (1 - quantile_p), alpha_opt, quantile_p,
+            1 - quantile_p, false)),
+        arm1_os_(std::move(arm1_os)), arm2_os_(std::move(arm2_os)) {
+    assert(0 < quantile_p && quantile_p < 1);
+  }
+
+  double p_value() const;
+
+ private:
+  struct GFunction {
+    const std::function<double(const double)> G;
+    const double minimum_start_x;
+    const double minimum_end_x;
+  };
+
+  double log_superMG_lower_bound() const;
+  GFunction get_G_fn(const int arm) const;
+  double empirical_quantile(const int arm) const;
+  double find_log_superMG_lower_bound(const GFunction first_arm_G,
+                                      const GFunction second_arm_G,
+                                      const int second_arm) const;
+  double arm_log_superMG(const int arm, const double prop_below) const;
+  const std::unique_ptr<OrderStatisticInterface>& order_stats(const int arm)
+      const;
+
+  const double quantile_p_;
+  const std::unique_ptr<MixtureSupermartingale> mixture_;
+  const std::unique_ptr<OrderStatisticInterface> arm1_os_;
+  const std::unique_ptr<OrderStatisticInterface> arm2_os_;
+};
+
 //////////////////////////////////////////////////////////////////////
 // Implementation
 //////////////////////////////////////////////////////////////////////
@@ -472,6 +552,105 @@ double DoubleStitchingBound::operator()(const double p, const double t,
       + sqrt(k1_ * k1_ * sigma_sq * t_max_m * ell + term2 * term2) + term2;
 }
 
+double QuantileABTest::p_value() const {
+  return std::min(1.0, exp(-log_superMG_lower_bound()));
+}
+
+double QuantileABTest::log_superMG_lower_bound() const {
+  const GFunction arm_1_G = get_G_fn(1);
+  const GFunction arm_2_G = get_G_fn(2);
+  /* An optimization for another day:
+  const double middle = (empirical_quantile(0) + empirical_quantile(1)) / 2;
+  const double mid_value = arm_1_G.G(middle) + arm_2_G.G(middle);
+  if (mid_value < log_alpha_inv_) {
+    return mid_value;
+  } else */
+  if (arm_1_G.minimum_end_x <= arm_2_G.minimum_end_x) {
+    return find_log_superMG_lower_bound(arm_1_G, arm_2_G, 2);
+  } else {
+    return find_log_superMG_lower_bound(arm_2_G, arm_1_G, 1);
+  }
+}
+
+double QuantileABTest::empirical_quantile(const int arm) const {
+  int position = floor(order_stats(arm)->size() * quantile_p_) + 1;
+  return order_stats(arm)->get_order_statistic(position);
+}
+
+double QuantileABTest::arm_log_superMG(const int arm, const double prop_below)
+    const {
+  int N = order_stats(arm)->size();
+  double s = (prop_below - quantile_p_) * N;
+  double v = quantile_p_ * (1 - quantile_p_) * N;
+  return mixture_->log_superMG(s, v);
+}
+
+QuantileABTest::GFunction QuantileABTest::get_G_fn(const int arm) const {
+  auto objective = [this, arm](double a) {return arm_log_superMG(arm, a);};
+  double minimizer = boost::math::tools::brent_find_minima(
+      objective, 0.0, 1.0, 20).first;
+
+  int N = order_stats(arm)->size();
+  double x_lower = order_stats(arm)->get_order_statistic(ceil(minimizer * N));
+  double x_upper =
+      order_stats(arm)->get_order_statistic(floor(minimizer * N) + 1);
+
+  auto G_callable = [this, arm, minimizer, x_lower, x_upper]
+      (const double x) {
+    double prop_below;
+    if (x < x_lower) {
+      prop_below = double(order_stats(arm)->count_less_or_equal(x))
+                   / order_stats(arm)->size();
+    } else if (x > x_upper) {
+      prop_below = double(order_stats(arm)->count_less(x))
+                   / order_stats(arm)->size();
+    } else {
+      prop_below = minimizer;
+    }
+    return arm_log_superMG(arm, prop_below);
+  };
+  return GFunction{G_callable, x_lower, x_upper};
+}
+
+double QuantileABTest::find_log_superMG_lower_bound(
+    const GFunction first_arm_G, const GFunction second_arm_G,
+    const int second_arm) const {
+  assert(first_arm_G.minimum_end_x <= second_arm_G.minimum_end_x);
+  auto objective = [first_arm_G, second_arm_G](double x) {
+    return first_arm_G.G(x) + second_arm_G.G(x);
+  };
+  double min_value = std::min(
+      objective(first_arm_G.minimum_end_x),
+      objective(second_arm_G.minimum_start_x));
+  int start_index = order_stats(second_arm)->count_less_or_equal(
+      first_arm_G.minimum_end_x);
+  int end_index = order_stats(second_arm)->count_less_or_equal(
+
+      second_arm_G.minimum_start_x);
+  assert(start_index <= end_index);
+  assert(end_index >= 1);
+
+  for (int i = std::max(1, start_index); i <= end_index; i++) {
+    double x = order_stats(second_arm)->get_order_statistic(i);
+    i = order_stats(second_arm)->count_less_or_equal(x);
+    double value = objective(x);
+    if (value < min_value) {
+      min_value = value;
+    }
+  }
+  return min_value;
+}
+
+const std::unique_ptr<OrderStatisticInterface>& QuantileABTest::order_stats(
+    const int arm) const {
+  assert(arm == 1 || arm == 2);
+  return arm == 1 ? arm1_os_ : arm2_os_;
+}
+
+//////////////////////////////////////////////////////////////////////
+// Simplified interface implementation
+//////////////////////////////////////////////////////////////////////
+
 double normal_log_mixture(const double s, const double v, const double v_opt,
                           const double alpha_opt,
                           const bool is_one_sided) {
@@ -553,12 +732,12 @@ double empirical_process_lil_bound(const int t, const double alpha,
   return bound(t);
 }
 
-double double_stitching_bound(const double p, const double t,
+double double_stitching_bound(const double quantile_p, const double t,
                               const double alpha, const double t_opt,
                               const double delta, const double s,
                               const double eta) {
   DoubleStitchingBound bound(t_opt, delta, s, eta);
-  return bound(p, t, alpha);
+  return bound(quantile_p, t, alpha);
 }
 
 }; // namespace confseq
