@@ -7,74 +7,79 @@
 
 namespace {
 
+using namespace confseq;
+
 // all target values are from a reference implementation in R
 
-TEST(MixtureTest, TestTwoSidedNormalMixture) {
-  EXPECT_NEAR(confseq::TwoSidedNormalMixture::best_rho(100, 0.05), 12.60056,
-              1e-5);
+const double V_OPT = 100;
+const double ALPHA_OPT = 0.05;
+const double ALPHA = 0.05;
 
-  confseq::TwoSidedNormalMixture mixture(100, 0.05);
-  EXPECT_NEAR(mixture.log_superMG(10, 100), -0.6510052, 1e-5);
-  EXPECT_NEAR(mixture.bound(100, log(1 / 0.05)), 30.35209, 1e-5);
+TEST(MixtureTest, TestTwoSidedNormalMixture) {
+  EXPECT_NEAR(TwoSidedNormalMixture::best_rho(V_OPT, ALPHA_OPT), 12.60056,
+              1e-5);
+  EXPECT_NEAR(normal_log_mixture(10, 100, V_OPT, ALPHA_OPT, false),
+              -0.6510052, 1e-5);
+  EXPECT_NEAR(normal_mixture_bound(100, ALPHA, V_OPT, ALPHA_OPT, false),
+              30.35209, 1e-5);
 }
 
 TEST(MixtureTest, TestOneSidedNormalMixture) {
-  confseq::OneSidedNormalMixture mixture(100, 0.05);
-  EXPECT_NEAR(mixture.log_superMG(10, 100), -0.06502391, 1e-5);
-  EXPECT_NEAR(mixture.bound(100, log(1 / 0.05)), 27.66071, 1e-5);
+  EXPECT_NEAR(normal_log_mixture(10, 100, V_OPT), -0.06502391, 1e-5);
+  EXPECT_NEAR(normal_mixture_bound(100, ALPHA, V_OPT), 27.66071, 1e-5);
 }
 
 TEST(MixtureTest, TestGammaExponentialMixture) {
-  confseq::GammaExponentialMixture mixture(100, 0.05, 2);
-  EXPECT_NEAR(mixture.log_superMG(10, 100), -0.2490165, 1e-5);
-  EXPECT_NEAR(mixture.bound(100, log(1 / 0.05)), 33.02017, 1e-5);
+  EXPECT_NEAR(gamma_exponential_log_mixture(10, 100, V_OPT, 2),
+              -0.2490165, 1e-5);
+  EXPECT_NEAR(gamma_exponential_mixture_bound(100, ALPHA, V_OPT, 2), 33.02017,
+              1e-5);
 }
 
 TEST(MixtureTest, TestGammaPoissonMixture) {
-  confseq::GammaPoissonMixture mixture(100, 0.05, 2);
-  EXPECT_NEAR(mixture.log_superMG(10, 100), -0.06991219, 1e-5);
-  EXPECT_NEAR(mixture.bound(100, log(1 / 0.05)), 30.1949, 1e-5);
+  EXPECT_NEAR(gamma_poisson_log_mixture(10, 100, V_OPT, 2), -0.06991219, 1e-5);
+  EXPECT_NEAR(gamma_poisson_mixture_bound(100, ALPHA, V_OPT, 2), 30.1949, 1e-5);
 }
 
 TEST(MixtureTest, TestTwoSidedBetaBinomialMixture) {
-  confseq::BetaBinomialMixture mixture(100, 0.05, 0.2, 0.8, false);
-  EXPECT_NEAR(mixture.log_superMG(10, 100), -0.6941012, 1e-5);
-  EXPECT_NEAR(mixture.bound(100, log(1 / 0.05)), 31.4308, 1e-5);
+  EXPECT_NEAR(
+      beta_binomial_log_mixture(10, 100, V_OPT, 0.2, 0.8, ALPHA_OPT, false),
+      -0.6941012, 1e-5);
+  EXPECT_NEAR(
+      beta_binomial_mixture_bound(100, ALPHA, V_OPT, 0.2, 0.8, ALPHA_OPT,
+                                  false),
+      31.4308, 1e-5);
 }
 
 TEST(MixtureTest, TestOneSidedBetaBinomialMixture) {
-  confseq::BetaBinomialMixture mixture(100, 0.05, 0.2, 0.8, true);
-  EXPECT_NEAR(mixture.log_superMG(10, 100), -0.07134019, 1e-5);
-  EXPECT_NEAR(mixture.bound(100, log(1 / 0.05)), 28.41238, 1e-5);
+  EXPECT_NEAR(beta_binomial_log_mixture(10, 100, V_OPT, 0.2, 0.8),
+              -0.07134019, 1e-5);
+  EXPECT_NEAR(beta_binomial_mixture_bound(100, ALPHA, V_OPT, 0.2, 0.8),
+              28.41238, 1e-5);
 }
 
 TEST(PolyStitchingTest, BasicTest) {
-  confseq::PolyStitchingBound bound(10, 3, 1.4, 2);
-  EXPECT_NEAR(bound(100, 0.05), 64.48755, 1e-5);
+  EXPECT_NEAR(poly_stitching_bound(100, ALPHA, 10, 3), 64.48755, 1e-5);
 }
 
 TEST(PolyStitchingTest, NegativeC) {
-  confseq::PolyStitchingBound bound(10, -1, 1.4, 2);
-  EXPECT_NEAR(bound(100, 0.05), 28.99389, 1e-5);
+  EXPECT_NEAR(poly_stitching_bound(100, ALPHA, 10, -1), 28.99389, 1e-5);
 }
 
 TEST(EmpiricalProcessLILTest, TestBound) {
-  EXPECT_NEAR(confseq::empirical_process_lil_bound(1000, .05, 100, 0.85),
+  EXPECT_NEAR(empirical_process_lil_bound(1000, .05, 100, 0.85),
               0.08204769, 1e-5);
 }
 
 TEST(DoubleStitchingTest, TestBound) {
-  EXPECT_NEAR(confseq::double_stitching_bound(0.5, 1000, 0.05, 100),
-              68.62803, 1e-5);
-  EXPECT_NEAR(confseq::double_stitching_bound(0.9, 1000, 0.05, 100),
-              43.72119, 1e-5);
-  EXPECT_NEAR(confseq::double_stitching_bound(0.1, 1000, 0.05, 100),
-              59.96521, 1e-5);
+  EXPECT_NEAR(double_stitching_bound(0.5, 1000, 0.05, 100), 68.62803, 1e-5);
+  EXPECT_NEAR(double_stitching_bound(0.9, 1000, 0.05, 100), 43.72119, 1e-5);
+  EXPECT_NEAR(double_stitching_bound(0.1, 1000, 0.05, 100), 59.96521, 1e-5);
 }
 
 TEST(StaticOrderStatisticsTest, TestBasics) {
   std::array<int, 5> values = {1, 2, 3, 3, 5};
-  confseq::StaticOrderStatistics os(values.begin(), values.end());
+  StaticOrderStatistics os(values.begin(), values.end());
   EXPECT_EQ(os.size(), 5);
   EXPECT_EQ(os.get_order_statistic(1), 1);
   EXPECT_EQ(os.get_order_statistic(4), 3);
@@ -97,12 +102,11 @@ double get_ab_p_value(const double quantile_p, const int offset) {
   std::array<int, 1000> b_values;
   std::iota(b_values.begin(), b_values.end(), offset + 1);
 
-  auto a_os = std::make_unique<confseq::StaticOrderStatistics>(
-      a_values.begin(), a_values.end());
-  auto b_os = std::make_unique<confseq::StaticOrderStatistics>(
-      b_values.begin(), b_values.end());
-  confseq::QuantileABTest test(quantile_p, 100, 0.05, std::move(a_os),
-                               std::move(b_os));
+  auto a_os = std::make_unique<StaticOrderStatistics>(a_values.begin(),
+                                                      a_values.end());
+  auto b_os = std::make_unique<StaticOrderStatistics>(b_values.begin(),
+                                                      b_values.end());
+  QuantileABTest test(quantile_p, 100, 0.05, std::move(a_os), std::move(b_os));
 
   return test.p_value();
 }
@@ -116,7 +120,7 @@ TEST(QuantileABTest, TestPValue) {
 
 TEST(BernoulliConfidenceIntervalTest, TestCI) {
   std::pair<double, double> ci =
-      confseq::bernoulli_confidence_interval(700, 1000, 0.05, 100);
+      bernoulli_confidence_interval(700, 1000, 0.05, 100);
   EXPECT_NEAR(ci.first, 0.651629, 1e-5);
   EXPECT_NEAR(ci.second, 0.745949, 1e-5);
 }
