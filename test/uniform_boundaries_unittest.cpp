@@ -114,4 +114,11 @@ TEST(QuantileABTest, TestPValue) {
   EXPECT_NEAR(get_ab_p_value(0.9, 55), 0.0340463, 1e-5);
 }
 
+TEST(BernoulliConfidenceIntervalTest, TestCI) {
+  std::pair<double, double> ci =
+      confseq::bernoulli_confidence_interval(700, 1000, 0.05, 100);
+  EXPECT_NEAR(ci.first, 0.651629, 1e-5);
+  EXPECT_NEAR(ci.second, 0.745949, 1e-5);
+}
+
 } // namespace

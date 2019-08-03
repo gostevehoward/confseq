@@ -65,6 +65,10 @@ double double_stitching_bound(const double quantile_p, const double t,
                               const double delta=0.5, const double s=1.4,
                               const double eta=2);
 
+std::pair<double, double> bernoulli_confidence_interval(
+    const int num_successes, const int num_trials, const double alpha,
+    const double t_opt, const double alpha_opt=0.05);
+
 //////////////////////////////////////////////////////////////////////
 // Object-oriented interface
 //////////////////////////////////////////////////////////////////////
@@ -738,6 +742,38 @@ double double_stitching_bound(const double quantile_p, const double t,
                               const double eta) {
   DoubleStitchingBound bound(t_opt, delta, s, eta);
   return bound(quantile_p, t, alpha);
+}
+
+double pair_average(std::pair<double, double> values) {
+  return (values.first + values.second) / 2;
+}
+
+std::pair<double, double> bernoulli_confidence_interval(
+    const int num_successes, const int num_trials, const double alpha,
+    const double t_opt, const double alpha_opt) {
+  const double threshold = log(1 / alpha);
+  const double empirical_p = 1.0 * num_successes / num_trials;
+  auto objective = [empirical_p, num_trials, t_opt, alpha_opt, threshold]
+                   (double radius) {
+    const double p = empirical_p + radius;
+    const BetaBinomialMixture mixture(p * (1 - p) * t_opt, alpha_opt, p, 1 - p,
+                                      false);
+    const double log_superMG = mixture.log_superMG(-radius * num_trials,
+                                                   p * (1 - p) * num_trials);
+    return log_superMG - threshold;
+  };
+  const double radius_guess =
+      sqrt(2 * empirical_p * (1 - empirical_p) * threshold / num_trials);
+  boost::uintmax_t max_iter = 50;
+  auto lower_radius_pair = boost::math::tools::bracket_and_solve_root(
+      objective, -radius_guess, 2.0, false,
+      boost::math::tools::eps_tolerance<double>(40), max_iter);
+  max_iter = 50;
+  auto upper_radius_pair = boost::math::tools::bracket_and_solve_root(
+      objective, radius_guess, 2.0, true,
+      boost::math::tools::eps_tolerance<double>(40), max_iter);
+  return std::make_pair(empirical_p + pair_average(lower_radius_pair),
+                        empirical_p + pair_average(upper_radius_pair));
 }
 
 }; // namespace confseq

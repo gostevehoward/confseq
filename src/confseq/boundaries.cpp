@@ -99,4 +99,22 @@ PYBIND11_MODULE(boundaries, m) {
           * `eta`: controls the spacing of epochs
         )pbdoc",
         "v"_a, "alpha"_a, "v_min"_a, "c"_a=0, "s"_a=1.4, "eta"_a=2);
+  m.def("bernoulli_confidence_interval",
+        &confseq::bernoulli_confidence_interval,
+        R"pbdoc(
+        Confidence sequence for [0, 1]-bounded distributions.
+
+        This function returns confidence bounds for the mean of a Bernoulli
+        distribution, or more generally, any distribution with support in the
+        unit interval [0, 1]. (This applies to any bounded distribution after
+        rescaling.) The confidence bounds form a confidence sequence, so are
+        guaranteed to cover the true mean uniformly over time with probability 1
+        - `alpha`.
+
+        * `num_successes`: number of "successful" Bernoulli trials seen so far,
+          or more generally, sum of observed outcomes.
+        * `num_trials`: total number of observations seen so far.
+        )pbdoc",
+        "num_successes"_a, "num_trials"_a, "alpha"_a, "t_opt"_a,
+        "alpha_opt"_a=0.05);
 }
