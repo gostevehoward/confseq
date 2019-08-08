@@ -5,16 +5,16 @@ and always-valid p-values. These constructs are useful in sequential A/B
 testing, best-arm identification, and other sequential statistical
 procedures. The main reference is
 
-S. R. Howard, A. Ramdas, J. McAuliffe, J. Sekhon. [Uniform, nonparametric,
+Howard, S. R., Ramdas, A., McAuliffe, J., and Sekhon, J. (2018), [Uniform, nonparametric,
 non-asymptotic confidence
-sequences](https://arxiv.org/abs/1810.08240). Preprint, arXiv:1810.08240.
+sequences](https://arxiv.org/abs/1810.08240), preprint, arXiv:1810.08240.
 
 Additionally, the library includes some functions for quantile confidence
 sequences and A/B testing based on
 
-S. R. Howard, A. Ramdas. [Sequential estimation of quantiles with applications
+Howard, S. R. and Ramdas, A. (2019), [Sequential estimation of quantiles with applications
 to A/B-testing and best-arm
-identification](https://arxiv.org/abs/1906.09712). Preprint, arXiv:1906.09712.
+identification](https://arxiv.org/abs/1906.09712), preprint, arXiv:1906.09712.
 
 This library is in early-stage development and should not be considered
 stable. I have tested it only on Python 3.7.0 on macOS Mojave. The
@@ -114,3 +114,19 @@ object-oriented interface useful for more involved work. The
 ## Unit tests
 
 Run `make -C /path/to/confseq/tests runtests` to run the C++ unit tests.
+
+## Citing this software
+
+Howard, S. R., and Ramdas, A. (2019-), ConfSeq: software for confidence sequences
+and uniform boundaries, https://github.com/gostevehoward/confseq [Online;
+accessed 2019-08-08].
+
+```bibtex
+@Misc{,
+  author = {Steven R. Howard and Aaditya Ramdas},
+  title = {{ConfSeq}: software for confidence sequences and uniform boundaries},
+  year = {2019--},
+  url = "https://github.com/gostevehoward/confseq",
+  note = {[Online; accessed <today>]}
+}
+```
