@@ -1,0 +1,17 @@
+Package: confseq
+Title: Uniform boundaries and confidence sequences
+Version: 0.0.4
+Authors@R: person("Steve", "Howard", email = "dev@gostevehoward.com",
+                  role = c("aut", "cre"))
+Description: This library supports calculation of uniform boundaries, confidence
+  sequences, and always-valid p-values. These constructs are useful in sequential
+  A/B testing, best-arm identification, and other sequential statistical
+  procedures.
+Depends: R (>= 3.5), Rcpp, BH
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+LinkingTo: Rcpp, BH
+Imports:
+    dplyr (>= 0.7)
+RoxygenNote: 6.1.1
