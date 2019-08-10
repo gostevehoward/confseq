@@ -2,6 +2,7 @@
 #define CONFIDENCESEQUENCES_UNIFORM_BOUNDARIES_H_
 
 #include <algorithm>
+#include <exception>
 #include <set>
 #include <vector>
 
@@ -72,6 +73,9 @@ std::pair<double, double> bernoulli_confidence_interval(
 //////////////////////////////////////////////////////////////////////
 // Object-oriented interface
 //////////////////////////////////////////////////////////////////////
+
+double log_beta(const double a, const double b);
+double log_incomplete_beta(const double a, const double b, const double x);
 
 // (v, alpha) -> boundary value
 using UniformBoundary = std::function<double(const double, const double)>;
@@ -177,7 +181,10 @@ class BetaBinomialMixture : public MixtureSupermartingale {
       : r_((is_one_sided ? OneSidedNormalMixture::best_rho(v_opt, alpha_opt)
                          : TwoSidedNormalMixture::best_rho(v_opt, alpha_opt))
            - g * h),
-        g_(g), h_(h), is_one_sided_(is_one_sided) {
+        g_(g), h_(h), is_one_sided_(is_one_sided),
+        normalizer_(log_incomplete_beta(r_ / (g_ * (g_ + h_)),
+                                        r_ / (h_ * (g_ + h_)),
+                                        is_one_sided_ ? h_ / (g_ + h_) : 1)) {
     assert(g > 0);
     assert(h > 0);
     assert(r_ > 0);
@@ -194,6 +201,7 @@ class BetaBinomialMixture : public MixtureSupermartingale {
   const double g_;
   const double h_;
   const bool is_one_sided_;
+  const double normalizer_;
 };
 
 class PolyStitchingBound {
@@ -317,13 +325,13 @@ class QuantileABTest {
  public:
   QuantileABTest(const double quantile_p, const int t_opt,
                  const double alpha_opt,
-                 std::unique_ptr<OrderStatisticInterface>&& arm1_os,
-                 std::unique_ptr<OrderStatisticInterface>&& arm2_os)
+                 std::shared_ptr<OrderStatisticInterface> arm1_os,
+                 std::shared_ptr<OrderStatisticInterface> arm2_os)
       : quantile_p_(quantile_p),
         mixture_(std::make_unique<BetaBinomialMixture>(
             t_opt * quantile_p * (1 - quantile_p), alpha_opt, quantile_p,
             1 - quantile_p, false)),
-        arm1_os_(std::move(arm1_os)), arm2_os_(std::move(arm2_os)) {
+        arm1_os_(arm1_os), arm2_os_(arm2_os) {
     assert(0 < quantile_p && quantile_p < 1);
   }
 
@@ -343,21 +351,21 @@ class QuantileABTest {
                                       const GFunction second_arm_G,
                                       const int second_arm) const;
   double arm_log_superMG(const int arm, const double prop_below) const;
-  const std::unique_ptr<OrderStatisticInterface>& order_stats(const int arm)
+  const std::shared_ptr<OrderStatisticInterface>& order_stats(const int arm)
       const;
 
   const double quantile_p_;
   const std::unique_ptr<MixtureSupermartingale> mixture_;
-  const std::unique_ptr<OrderStatisticInterface> arm1_os_;
-  const std::unique_ptr<OrderStatisticInterface> arm2_os_;
+  const std::shared_ptr<OrderStatisticInterface> arm1_os_;
+  const std::shared_ptr<OrderStatisticInterface> arm2_os_;
 };
 
 //////////////////////////////////////////////////////////////////////
 // Implementation
 //////////////////////////////////////////////////////////////////////
 
-double find_s_upper_bound(const MixtureSupermartingale& mixture_superMG,
-                          const double v, const double log_threshold) {
+inline double find_s_upper_bound(const MixtureSupermartingale& mixture_superMG,
+                                 const double v, const double log_threshold) {
   double trial_upper_bound = v;
   for (int i = 0; i < 50; i++) {
     if (mixture_superMG.log_superMG(trial_upper_bound, v) > log_threshold) {
@@ -365,11 +373,12 @@ double find_s_upper_bound(const MixtureSupermartingale& mixture_superMG,
     }
     trial_upper_bound *= 2;
   }
-  return trial_upper_bound; // bisect() will indicate the error
+  throw std::runtime_error(
+      "Failed to find an upper limit for the mixture bound");
 }
 
-double find_mixture_bound(const MixtureSupermartingale& mixture_superMG,
-                          const double v, const double log_threshold) {
+inline double find_mixture_bound(const MixtureSupermartingale& mixture_superMG,
+                                 const double v, const double log_threshold) {
   auto root_fn = [&mixture_superMG, v, log_threshold](const double s) {
     return mixture_superMG.log_superMG(s, v) - log_threshold;
   };
@@ -377,47 +386,53 @@ double find_mixture_bound(const MixtureSupermartingale& mixture_superMG,
   if (s_upper_bound == std::numeric_limits<double>::infinity()) {
     s_upper_bound = find_s_upper_bound(mixture_superMG, v, log_threshold);
   }
-  auto result = boost::math::tools::bisect(
-      root_fn, 0.0, s_upper_bound,
-      boost::math::tools::eps_tolerance<double>(40));
-  return (result.first + result.second) / 2;
+  if (root_fn(s_upper_bound) < 0) {
+    return s_upper_bound;
+  } else {
+    auto result = boost::math::tools::bisect(
+        root_fn, 0.0, s_upper_bound,
+        boost::math::tools::eps_tolerance<double>(40));
+    return (result.first + result.second) / 2;
+  }
 }
 
-double TwoSidedNormalMixture::log_superMG(const double s, const double v)
+inline double TwoSidedNormalMixture::log_superMG(const double s, const double v)
     const {
   return (1 / 2.0) * log(rho_ / (v + rho_)) + s * s / (2 * (v + rho_));
 }
 
-double TwoSidedNormalMixture::bound(const double v, const double log_threshold)
-    const {
+inline double TwoSidedNormalMixture::bound(const double v,
+                                           const double log_threshold) const {
   return sqrt((v + rho_) * (log(1 + v / rho_) + 2 * log_threshold));
 }
 
-double TwoSidedNormalMixture::best_rho(double v, double alpha) {
+inline double TwoSidedNormalMixture::best_rho(double v, double alpha) {
   assert(v > 0);
   assert(0 < alpha && alpha < 1);
   return v / (2 * log(1 / alpha) + log(1 + 2 * log(1 / alpha)));
 }
 
-double OneSidedNormalMixture::log_superMG(const double s, const double v)
+inline double OneSidedNormalMixture::log_superMG(const double s, const double v)
     const {
   boost::math::normal_distribution<double> normal;
   return (1 / 2.0) * log(4 * rho_ / (v + rho_)) + s * s / (2 * (v + rho_))
       + log(boost::math::cdf(normal, s / sqrt(v + rho_)));
 }
 
-double OneSidedNormalMixture::best_rho(double v, double alpha) {
+inline double OneSidedNormalMixture::best_rho(double v, double alpha) {
   return TwoSidedNormalMixture::best_rho(v, 2 * alpha);
 }
 
-double GammaExponentialMixture::get_leading_constant(double rho, double c) {
+inline double GammaExponentialMixture::get_leading_constant(double rho,
+                                                            double c) {
   const double rho_c_sq = rho / (c * c);
   return rho_c_sq * log(rho_c_sq)
       - boost::math::lgamma(rho_c_sq)
       - log(boost::math::gamma_p(rho_c_sq, rho_c_sq));
 }
 
-double GammaExponentialMixture::log_superMG(const double s, const double v)
+inline double GammaExponentialMixture::log_superMG(const double s,
+                                                   const double v)
     const {
   const double c_sq = c_ * c_;
   const double cs_v_csq = (c_ * s + v) / c_sq;
@@ -429,14 +444,14 @@ double GammaExponentialMixture::log_superMG(const double s, const double v)
       + cs_v_csq;
 }
 
-double GammaPoissonMixture::get_leading_constant(double rho, double c) {
+inline double GammaPoissonMixture::get_leading_constant(double rho, double c) {
   const double rho_c_sq = rho / (c * c);
   return rho_c_sq * log(rho_c_sq)
       - boost::math::lgamma(rho_c_sq)
       - log(boost::math::gamma_q(rho_c_sq, rho_c_sq));
 }
 
-double GammaPoissonMixture::log_superMG(const double s, const double v)
+inline double GammaPoissonMixture::log_superMG(const double s, const double v)
     const {
   const double c_sq = c_ * c_;
   const double v_rho_csq = (v + rho_) / c_sq;
@@ -448,12 +463,13 @@ double GammaPoissonMixture::log_superMG(const double s, const double v)
       + v / c_sq;
 }
 
-double log_beta(const double a, const double b) {
+inline double log_beta(const double a, const double b) {
   return boost::math::lgamma(a) + boost::math::lgamma(b)
       - boost::math::lgamma(a + b);
 }
 
-double log_incomplete_beta(const double a, const double b, const double x) {
+inline double log_incomplete_beta(const double a, const double b,
+                                  const double x) {
   if (x == 1) {
     return log_beta(a, b);
   } else {
@@ -461,7 +477,7 @@ double log_incomplete_beta(const double a, const double b, const double x) {
   }
 }
 
-double BetaBinomialMixture::log_superMG(const double s, const double v)
+inline double BetaBinomialMixture::log_superMG(const double s, const double v)
     const {
   const double x = is_one_sided_ ? h_ / (g_ + h_) : 1;
   return
@@ -471,21 +487,21 @@ double BetaBinomialMixture::log_superMG(const double s, const double v)
       + log_incomplete_beta((r_ + v - g_ * s) /  (g_ * (g_ + h_)),
                             (r_ + v + h_ * s) / (h_ * (g_ + h_)),
                             x)
-      - log_incomplete_beta(r_ / (g_ * (g_ + h_)), r_ / (h_ * (g_ + h_)), x);
+      - normalizer_;
 }
 
-double BetaBinomialMixture::s_upper_bound(const double v) const {
+inline double BetaBinomialMixture::s_upper_bound(const double v) const {
   return v / g_;
 }
 
-double PolyStitchingBound::operator()(double v, double alpha) const {
+inline double PolyStitchingBound::operator()(double v, double alpha) const {
   double use_v = std::max(v, v_min_);
   double ell = s_ * log(log(eta_ * use_v / v_min_)) + A_ + log(1 / alpha);
   double term2 = k2_ * c_ * ell;
   return sqrt(k1_ * k1_ * use_v * ell + term2 * term2) + term2;
 }
 
-double EmpiricalProcessLILBound::operator()(const double t) const {
+inline double EmpiricalProcessLILBound::operator()(const double t) const {
   if (t < t_min_) {
     return std::numeric_limits<double>::infinity();
   } else {
@@ -493,7 +509,7 @@ double EmpiricalProcessLILBound::operator()(const double t) const {
   }
 }
 
-double EmpiricalProcessLILBound::find_optimal_C(const double alpha,
+inline double EmpiricalProcessLILBound::find_optimal_C(const double alpha,
                                                 const double A) {
   using namespace std::placeholders;
 
@@ -530,16 +546,16 @@ double EmpiricalProcessLILBound::find_optimal_C(const double alpha,
   return (C_result.first + C_result.second) / 2;
 }
 
-double logit(const double p) {
+inline double logit(const double p) {
   assert(0 < 1 && p < 1);
   return log(p / (1 - p));
 }
 
-double expit(const double l) {
+inline double expit(const double l) {
   return 1 / (1 + exp(-l));
 }
 
-double DoubleStitchingBound::operator()(const double p, const double t,
+inline double DoubleStitchingBound::operator()(const double p, const double t,
                                         const double alpha) const {
   const double t_max_m = std::max(t, t_opt_);
   const double r = p >= 0.5 ? p
@@ -556,11 +572,11 @@ double DoubleStitchingBound::operator()(const double p, const double t,
       + sqrt(k1_ * k1_ * sigma_sq * t_max_m * ell + term2 * term2) + term2;
 }
 
-double QuantileABTest::p_value() const {
+inline double QuantileABTest::p_value() const {
   return std::min(1.0, exp(-log_superMG_lower_bound()));
 }
 
-double QuantileABTest::log_superMG_lower_bound() const {
+inline double QuantileABTest::log_superMG_lower_bound() const {
   const GFunction arm_1_G = get_G_fn(1);
   const GFunction arm_2_G = get_G_fn(2);
   /* An optimization for another day:
@@ -576,12 +592,13 @@ double QuantileABTest::log_superMG_lower_bound() const {
   }
 }
 
-double QuantileABTest::empirical_quantile(const int arm) const {
+inline double QuantileABTest::empirical_quantile(const int arm) const {
   int position = floor(order_stats(arm)->size() * quantile_p_) + 1;
   return order_stats(arm)->get_order_statistic(position);
 }
 
-double QuantileABTest::arm_log_superMG(const int arm, const double prop_below)
+inline double QuantileABTest::arm_log_superMG(const int arm,
+                                              const double prop_below)
     const {
   int N = order_stats(arm)->size();
   double s = (prop_below - quantile_p_) * N;
@@ -589,7 +606,7 @@ double QuantileABTest::arm_log_superMG(const int arm, const double prop_below)
   return mixture_->log_superMG(s, v);
 }
 
-QuantileABTest::GFunction QuantileABTest::get_G_fn(const int arm) const {
+inline QuantileABTest::GFunction QuantileABTest::get_G_fn(const int arm) const {
   auto objective = [this, arm](double a) {return arm_log_superMG(arm, a);};
   double minimizer = boost::math::tools::brent_find_minima(
       objective, 0.0, 1.0, 20).first;
@@ -616,7 +633,7 @@ QuantileABTest::GFunction QuantileABTest::get_G_fn(const int arm) const {
   return GFunction{G_callable, x_lower, x_upper};
 }
 
-double QuantileABTest::find_log_superMG_lower_bound(
+inline double QuantileABTest::find_log_superMG_lower_bound(
     const GFunction first_arm_G, const GFunction second_arm_G,
     const int second_arm) const {
   assert(first_arm_G.minimum_end_x <= second_arm_G.minimum_end_x);
@@ -645,7 +662,8 @@ double QuantileABTest::find_log_superMG_lower_bound(
   return min_value;
 }
 
-const std::unique_ptr<OrderStatisticInterface>& QuantileABTest::order_stats(
+inline const std::shared_ptr<OrderStatisticInterface>&
+QuantileABTest::order_stats(
     const int arm) const {
   assert(arm == 1 || arm == 2);
   return arm == 1 ? arm1_os_ : arm2_os_;
@@ -655,9 +673,9 @@ const std::unique_ptr<OrderStatisticInterface>& QuantileABTest::order_stats(
 // Simplified interface implementation
 //////////////////////////////////////////////////////////////////////
 
-double normal_log_mixture(const double s, const double v, const double v_opt,
-                          const double alpha_opt,
-                          const bool is_one_sided) {
+inline double normal_log_mixture(
+    const double s, const double v, const double v_opt, const double alpha_opt,
+    const bool is_one_sided) {
   if (is_one_sided) {
     OneSidedNormalMixture mixture(v_opt, alpha_opt);
     return mixture.log_superMG(s, v);
@@ -667,7 +685,7 @@ double normal_log_mixture(const double s, const double v, const double v_opt,
   }
 }
 
-double normal_mixture_bound(
+inline double normal_mixture_bound(
     const double v, const double alpha, const double v_opt,
     const double alpha_opt, const bool is_one_sided) {
   if (is_one_sided) {
@@ -679,35 +697,35 @@ double normal_mixture_bound(
   }
 }
 
-double gamma_exponential_log_mixture(
+inline double gamma_exponential_log_mixture(
     const double s, const double v, const double v_opt,
     const double c, const double alpha_opt) {
   GammaExponentialMixture mixture(v_opt, alpha_opt, c);
   return mixture.log_superMG(s, v);
 }
 
-double gamma_exponential_mixture_bound(
+inline double gamma_exponential_mixture_bound(
     const double v, const double alpha, const double v_opt,
     const double c, const double alpha_opt) {
   GammaExponentialMixture mixture(v_opt, alpha_opt, c);
   return mixture.bound(v, log(1 / alpha));
 }
 
-double gamma_poisson_log_mixture(
+inline double gamma_poisson_log_mixture(
     const double s, const double v, const double v_opt, const double c,
     const double alpha_opt) {
   GammaPoissonMixture mixture(v_opt, alpha_opt, c);
   return mixture.log_superMG(s, v);
 }
 
-double gamma_poisson_mixture_bound(
+inline double gamma_poisson_mixture_bound(
     const double v, const double alpha, const double v_opt, const double c,
     const double alpha_opt) {
   GammaPoissonMixture mixture(v_opt, alpha_opt, c);
   return mixture.bound(v, log(1 / alpha));
 }
 
-double beta_binomial_log_mixture(
+inline double beta_binomial_log_mixture(
     const double s, const double v, const double v_opt, const double g,
     const double h, const double alpha_opt,
     const bool is_one_sided) {
@@ -715,7 +733,7 @@ double beta_binomial_log_mixture(
   return mixture.log_superMG(s, v);
 }
 
-double beta_binomial_mixture_bound(
+inline double beta_binomial_mixture_bound(
     const double v, const double alpha, const double v_opt, const double g,
     const double h, const double alpha_opt,
     const bool is_one_sided) {
@@ -723,20 +741,20 @@ double beta_binomial_mixture_bound(
   return mixture.bound(v, log(1 / alpha));
 }
 
-double poly_stitching_bound(const double v, const double alpha,
+inline double poly_stitching_bound(const double v, const double alpha,
                             const double v_min, const double c,
                             const double s, const double eta) {
   PolyStitchingBound bound(v_min, c, s, eta);
   return bound(v, alpha);
 }
 
-double empirical_process_lil_bound(const int t, const double alpha,
+inline double empirical_process_lil_bound(const int t, const double alpha,
                                    const double t_min, const double A) {
   EmpiricalProcessLILBound bound(alpha, t_min, A);
   return bound(t);
 }
 
-double double_stitching_bound(const double quantile_p, const double t,
+inline double double_stitching_bound(const double quantile_p, const double t,
                               const double alpha, const double t_opt,
                               const double delta, const double s,
                               const double eta) {
@@ -744,11 +762,11 @@ double double_stitching_bound(const double quantile_p, const double t,
   return bound(quantile_p, t, alpha);
 }
 
-double pair_average(std::pair<double, double> values) {
+inline double pair_average(std::pair<double, double> values) {
   return (values.first + values.second) / 2;
 }
 
-std::pair<double, double> bernoulli_confidence_interval(
+inline std::pair<double, double> bernoulli_confidence_interval(
     const int num_successes, const int num_trials, const double alpha,
     const double t_opt, const double alpha_opt) {
   const double threshold = log(1 / alpha);

@@ -56,6 +56,9 @@ TEST(MixtureTest, TestOneSidedBetaBinomialMixture) {
               -0.07134019, 1e-5);
   EXPECT_NEAR(beta_binomial_mixture_bound(100, ALPHA, V_OPT, 0.2, 0.8),
               28.41238, 1e-5);
+  EXPECT_NEAR(
+      beta_binomial_mixture_bound(2 * 0.2 * 0.8, 0.05, 100, 0.2, 0.8),
+      2 * 0.8, 1e-5);
 }
 
 TEST(PolyStitchingTest, BasicTest) {
@@ -102,11 +105,11 @@ double get_ab_p_value(const double quantile_p, const int offset) {
   std::array<int, 1000> b_values;
   std::iota(b_values.begin(), b_values.end(), offset + 1);
 
-  auto a_os = std::make_unique<StaticOrderStatistics>(a_values.begin(),
+  auto a_os = std::make_shared<StaticOrderStatistics>(a_values.begin(),
                                                       a_values.end());
-  auto b_os = std::make_unique<StaticOrderStatistics>(b_values.begin(),
+  auto b_os = std::make_shared<StaticOrderStatistics>(b_values.begin(),
                                                       b_values.end());
-  QuantileABTest test(quantile_p, 100, 0.05, std::move(a_os), std::move(b_os));
+  QuantileABTest test(quantile_p, 100, 0.05, a_os, b_os);
 
   return test.p_value();
 }
