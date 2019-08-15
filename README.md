@@ -90,7 +90,7 @@ from the confidence sequences paper.
   is implemented by `poly_stitching_bound`. Besides `v` and `alpha`, this
   function requires the tuning parameter `v_min` as well as optional parameters
   `c`, `s`, and `eta`, all documented in the paper.
-* This module also includes a `bernoulli_confidence_sequence` function which
+* This module also includes a `bernoulli_confidence_interval` function which
   computes confidence sequences for the mean of any distribution with bounded
   support by making use of the sub-Bernoulli condition. Observations must be
   scaled so that the support is within the unit interval [0, 1].
