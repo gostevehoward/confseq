@@ -5,7 +5,9 @@
 #include <exception>
 #include <set>
 #include <vector>
+#include <memory>
 
+// TODO: auto-check if the user is on Linux, and if so, recommend that boost be installed via the distribution's package manager. Also, see if boost can be included via said pkg manager rather than through a local package
 #include <boost/cstdint.hpp>
 #include <boost/math/distributions/normal.hpp>
 #include <boost/math/special_functions/beta.hpp>
