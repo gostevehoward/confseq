@@ -769,29 +769,40 @@ inline double pair_average(std::pair<double, double> values) {
 inline std::pair<double, double> bernoulli_confidence_interval(
     const int num_successes, const int num_trials, const double alpha,
     const double t_opt, const double alpha_opt) {
+  using namespace std::placeholders;
   const double threshold = log(1 / alpha);
   const double empirical_p = 1.0 * num_successes / num_trials;
+
   auto objective = [empirical_p, num_trials, t_opt, alpha_opt, threshold]
-                   (double radius) {
-    const double p = empirical_p + radius;
-    const BetaBinomialMixture mixture(p * (1 - p) * t_opt, alpha_opt, p, 1 - p,
-                                      false);
-    const double log_superMG = mixture.log_superMG(-radius * num_trials,
-                                                   p * (1 - p) * num_trials);
-    return log_superMG - threshold;
+                   (const double p, const double zero_value,
+                    const double one_value) {
+    if (p <= 0) {
+      return zero_value;
+    } else if (p >= 1) {
+      return one_value;
+    } else {
+      const BetaBinomialMixture mixture(p * (1 - p) * t_opt, alpha_opt,
+                                        p, 1 - p, false);
+      const double log_superMG = mixture.log_superMG(
+          (empirical_p - p) * num_trials, p * (1 - p) * num_trials);
+      return log_superMG - threshold;
+    }
   };
-  const double radius_guess =
-      sqrt(2 * empirical_p * (1 - empirical_p) * threshold / num_trials);
-  boost::uintmax_t max_iter = 50;
-  auto lower_radius_pair = boost::math::tools::bracket_and_solve_root(
-      objective, -radius_guess, 2.0, false,
-      boost::math::tools::eps_tolerance<double>(40), max_iter);
-  max_iter = 50;
-  auto upper_radius_pair = boost::math::tools::bracket_and_solve_root(
-      objective, radius_guess, 2.0, true,
-      boost::math::tools::eps_tolerance<double>(40), max_iter);
-  return std::make_pair(empirical_p + pair_average(lower_radius_pair),
-                        empirical_p + pair_average(upper_radius_pair));
+
+  boost::math::tools::eps_tolerance<double> tolerance(40);
+  double lower_bound = 0.0;
+  if (empirical_p > 0) {
+    auto lower_bound_pair = boost::math::tools::bisect(
+        std::bind(objective, _1, 1.0, -1.0), 0.0, empirical_p, tolerance);
+    lower_bound = pair_average(lower_bound_pair);
+  }
+  double upper_bound = 1.0;
+  if (empirical_p < 1) {
+    auto upper_bound_pair = boost::math::tools::bisect(
+        std::bind(objective, _1, -1.0, 1.0), empirical_p, 1.0, tolerance);
+    upper_bound = pair_average(upper_bound_pair);
+  }
+  return std::make_pair(lower_bound, upper_bound);
 }
 
 }; // namespace confseq

@@ -128,4 +128,40 @@ TEST(BernoulliConfidenceIntervalTest, TestCI) {
   EXPECT_NEAR(ci.second, 0.745949, 1e-5);
 }
 
+TEST(BernoulliConfidenceIntervalTest, LowSuccessCount) {
+  std::pair<double, double> ci =
+      bernoulli_confidence_interval(15, 50, 0.05, 50);
+  EXPECT_NEAR(ci.first, 0.129556, 1e-5);
+  EXPECT_NEAR(ci.second, 0.511896, 1e-5);
+
+  ci = bernoulli_confidence_interval(5, 50, 0.05, 50);
+  EXPECT_NEAR(ci.first, 0.013021, 1e-5);
+  EXPECT_NEAR(ci.second, 0.269264, 1e-5);
+
+  ci = bernoulli_confidence_interval(1, 50, 0.05, 50);
+  EXPECT_NEAR(ci.first, 0.0, 1e-5);
+  EXPECT_NEAR(ci.second, 0.13489, 1e-5);
+}
+
+TEST(BernoulliConfidenceIntervalTest, LowTrials) {
+  std::pair<double, double> ci =
+      bernoulli_confidence_interval(1, 2, 0.05, 50);
+  EXPECT_NEAR(ci.first, 0.0, 1e-5);
+  EXPECT_NEAR(ci.second, 1.0, 1e-5);
+}
+
+TEST(BernoulliConfidenceIntervalTest, NoSuccesses) {
+  std::pair<double, double> ci =
+      bernoulli_confidence_interval(0, 1, 0.05, 50);
+  EXPECT_NEAR(ci.first, 0.0, 1e-5);
+  EXPECT_NEAR(ci.second, 1.0, 1e-5);
+}
+
+TEST(BernoulliConfidenceIntervalTest, AllSuccesses) {
+  std::pair<double, double> ci =
+      bernoulli_confidence_interval(1, 1, 0.05, 50);
+  EXPECT_NEAR(ci.first, 0.0, 1e-5);
+  EXPECT_NEAR(ci.second, 1.0, 1e-5);
+}
+
 } // namespace
