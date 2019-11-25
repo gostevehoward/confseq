@@ -150,6 +150,13 @@ TEST(BernoulliConfidenceIntervalTest, LowTrials) {
   EXPECT_NEAR(ci.second, 1.0, 1e-5);
 }
 
+TEST(BernoulliConfidenceIntervalTest, LowOptimizedTime) {
+  std::pair<double, double> ci =
+      bernoulli_confidence_interval(100, 200, 0.05, 1);
+  EXPECT_NEAR(ci.first, 0.328923, 1e-5);
+  EXPECT_NEAR(ci.second, 0.671076, 1e-5);
+}
+
 TEST(BernoulliConfidenceIntervalTest, NoSuccesses) {
   std::pair<double, double> ci =
       bernoulli_confidence_interval(0, 1, 0.05, 50);

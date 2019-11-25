@@ -178,10 +178,8 @@ class BetaBinomialMixture : public MixtureSupermartingale {
 
   BetaBinomialMixture(double v_opt, double alpha_opt, double g, double h,
                       bool is_one_sided)
-      : r_((is_one_sided ? OneSidedNormalMixture::best_rho(v_opt, alpha_opt)
-                         : TwoSidedNormalMixture::best_rho(v_opt, alpha_opt))
-           - g * h),
-        g_(g), h_(h), is_one_sided_(is_one_sided),
+      : r_(optimal_r(v_opt, alpha_opt, g, h, is_one_sided)), g_(g), h_(h),
+        is_one_sided_(is_one_sided),
         normalizer_(log_incomplete_beta(r_ / (g_ * (g_ + h_)),
                                         r_ / (h_ * (g_ + h_)),
                                         is_one_sided_ ? h_ / (g_ + h_) : 1)) {
@@ -197,6 +195,16 @@ class BetaBinomialMixture : public MixtureSupermartingale {
   }
 
  private:
+
+  static double optimal_r(const double v_opt, const double alpha_opt,
+                          const double g, const double h,
+                          const bool is_one_sided) {
+    double rho = is_one_sided
+        ? OneSidedNormalMixture::best_rho(v_opt, alpha_opt)
+        : TwoSidedNormalMixture::best_rho(v_opt, alpha_opt);
+    return std::max(rho - g * h, 1e-3 * g * h);
+  }
+
   const double r_;
   const double g_;
   const double h_;
