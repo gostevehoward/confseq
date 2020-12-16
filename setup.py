@@ -26,6 +26,7 @@ ext_modules = [
     Extension(
         'confseq.boundaries',
         ['src/confseq/boundaries.cpp'],
+        depends=['src/confseq/uniform_boundaries.h'],
         include_dirs=[
             # Path to pybind11 headers
             get_pybind_include(),
@@ -36,6 +37,7 @@ ext_modules = [
     Extension(
         'confseq.quantiles',
         ['src/confseq/quantiles.cpp'],
+        depends=['src/confseq/uniform_boundaries.h'],
         include_dirs=[
             # Path to pybind11 headers
             get_pybind_include(),

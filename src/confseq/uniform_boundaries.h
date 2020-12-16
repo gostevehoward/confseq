@@ -67,7 +67,7 @@ double double_stitching_bound(const double quantile_p, const double t,
                               const double eta=2);
 
 std::pair<double, double> bernoulli_confidence_interval(
-    const int num_successes, const int num_trials, const double alpha,
+    const double num_successes, const int num_trials, const double alpha,
     const double t_opt, const double alpha_opt=0.05);
 
 //////////////////////////////////////////////////////////////////////
@@ -775,7 +775,7 @@ inline double pair_average(std::pair<double, double> values) {
 }
 
 inline std::pair<double, double> bernoulli_confidence_interval(
-    const int num_successes, const int num_trials, const double alpha,
+    const double num_successes, const int num_trials, const double alpha,
     const double t_opt, const double alpha_opt) {
   using namespace std::placeholders;
   const double threshold = log(1 / alpha);
