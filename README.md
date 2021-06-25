@@ -129,7 +129,7 @@ object-oriented interface useful for more involved work. The
 
 ## Unit tests
 
-Run `make -C /path/to/confseq/tests runtests` to run the C++ unit tests.
+Run `make -C /path/to/confseq/test runtests` to run the C++ unit tests.
 
 ## Citing this software
 
