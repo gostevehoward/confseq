@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <exception>
+#include <memory>
 #include <set>
 #include <vector>
 
