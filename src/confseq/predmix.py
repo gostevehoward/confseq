@@ -1,6 +1,7 @@
 import numpy as np
 import math
 
+
 def lambda_predmix_eb(
     x,
     truncation=math.inf,
@@ -29,12 +30,11 @@ def lambda_predmix_eb(
 
     return lambdas * scale
 
+
 def predmix_empbern_cs(
     x,
     alpha=0.05,
     truncation=1 / 2,
-    lower_bd=0,
-    upper_bd=1,
     running_intersection=False,
     fixed_n=None,
 ):
@@ -96,8 +96,6 @@ def predmix_hoeffding_cs(
     x,
     lambda_params=None,
     alpha=0.05,
-    lower_bd=0,
-    upper_bd=1,
     running_intersection=False,
 ):
     """
@@ -135,15 +133,15 @@ def predmix_hoeffding_cs(
 
     mu_hat_t = np.cumsum(lambda_params * x) / np.cumsum(lambda_params)
 
-    psi = np.power(upper_bd - lower_bd, 2) * np.cumsum(np.power(lambda_params, 2)) / 8
+    psi = np.cumsum(np.power(lambda_params, 2)) / 8
     margin = (psi + np.log(2 / alpha)) / (np.cumsum(lambda_params))
 
     weighted_mu_hat_t = np.cumsum(x * lambda_params) / np.cumsum(lambda_params)
     weighted_mu_hat_t[np.isnan(weighted_mu_hat_t)] = 1 / 2
 
     l, u = weighted_mu_hat_t - margin, weighted_mu_hat_t + margin
-    l = np.maximum(l, lower_bd)
-    u = np.minimum(u, upper_bd)
+    l = np.maximum(l, 0)
+    u = np.minimum(u, 1)
 
     if running_intersection:
         l = np.maximum.accumulate(l)
