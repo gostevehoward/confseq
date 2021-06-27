@@ -4,9 +4,10 @@ import matplotlib.pyplot as plt
 from time import time
 from scipy.optimize import minimize, newton, root
 import multiprocess
+from copy import copy
 from logging import info, warnings
 
-from . import predmix
+from .predmix import lambda_predmix_eb
 
 
 def betting_cs(
@@ -125,7 +126,7 @@ def betting_mart(
     """
 
     if lambdas_fn_positive is None:
-        lambdas_fn_positive = lambda x, m: predmix.lambda_predmix_eb(x)
+        lambdas_fn_positive = lambda x, m: lambda_predmix_eb(x)
 
     if lambdas_fn_negative is None:
         lambdas_fn_negative = lambdas_fn_positive
@@ -314,6 +315,58 @@ def cs_from_martingale(x, mart_fn, breaks=1000, alpha=0.05, N=None, parallel=Fal
 
         l = np.maximum(l, logical_l)
         u = np.minimum(u, logical_u)
+
+    return l, u
+
+
+def betting_cs_hedged(
+    x,
+    alpha=0.05,
+    theta=1 / 2,
+    breaks=1000,
+    running_intersection=False,
+    trunc_scale=1 / 2,
+):
+    n = len(x)
+
+    lambdas = lambda_predmix_eb(
+        x, truncation=math.inf, alpha=alpha / 2, prior_mean=1 / 2, prior_variance=1 / 4
+    )
+    possible_m = np.arange(0, 1 + 1 / breaks, step=1 / breaks)
+    x_mtx = np.tile(x, (breaks + 1, 1))
+    m_mtx = np.tile(possible_m, (n, 1)).transpose()
+
+    lambdas_mtx_positive = np.tile(lambdas, (breaks + 1, 1))
+    lambdas_mtx_negative = copy.deepcopy(lambdas_mtx_positive)
+    lambdas_mtx_positive = np.minimum(lambdas_mtx_positive, trunc_scale / m_mtx)
+    lambdas_mtx_negative = np.minimum(lambdas_mtx_negative, trunc_scale / (1 - m_mtx))
+    # capital matrix, positive part
+    cap_mtx_pos = np.cumprod(1 + lambdas_mtx_positive * (x_mtx - m_mtx), axis=1)
+    # capital matrix, negative part
+    cap_mtx_neg = np.cumprod(1 - lambdas_mtx_negative * (x_mtx - m_mtx), axis=1)
+    capital_mtx = theta * cap_mtx_pos + (1 - theta) * cap_mtx_neg
+
+    lu = np.array(
+        [
+            (possible_m[no_reject[0]], possible_m[no_reject[-1]])
+            for no_reject in [
+                np.where(capital_mtx[:, i] < 1 / alpha)[0] for i in range(n)
+            ]
+        ]
+    ).transpose()
+    l, u = lu[0, :], lu[1, :]
+
+    # Take superset since we're gridding up [0, 1]
+    l = l - 1 / breaks
+    u = u + 1 / breaks
+
+    # intersect with [0, 1]
+    l = np.maximum(l, 0)
+    u = np.minimum(u, 1)
+
+    if running_intersection:
+        l = np.maximum.accumulate(l)
+        u = np.minimum.accumulate(u)
 
     return l, u
 
