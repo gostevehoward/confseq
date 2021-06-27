@@ -12,6 +12,44 @@ def lambda_predmix_eb(
     fake_obs=1,
     scale=1,
 ):
+    """
+    Predictable mixture lambda values or "bets"
+
+    Parameters
+    ----------
+    x, array-like of 0-1 bounded reals
+        Observed data
+
+    truncation, positive real or infinity
+        Level at which to truncate lambda
+
+    alpha, (0, 1)-valued real
+        Significance level in (0, 1)
+
+    fixed_n, positive integer or None
+        Sample size for which lambda should be optimized.
+        If left as None, lambda will scale like 1/sqrt{t log t}
+
+    prior_mean, [0, 1]-valued real
+        Prior mean to use for regularized sample mean
+
+    prior_variance, (0, 1/4]-valued real
+        Prior variance to use for regularized sample variance
+
+    fake_obs, positive integer
+        Number of 'fake observations' to add.
+        Larger values correspond to more regularization near
+        `prior_mean` and `prior_variance`
+
+    scale, positive real
+        Scale by which to multiply final lambda output.
+        For most applications, this should be left as 1
+
+    Returns
+    -------
+    lambdas, array-like of positive reals
+        A (numpy) array of lambda values or "bets"
+    """
     t = np.arange(1, len(x) + 1)
     mu_hat_t = (fake_obs * prior_mean + np.cumsum(x)) / (t + fake_obs)
     mu_hat_tminus1 = np.append(prior_mean, mu_hat_t[0 : (len(x) - 1)])
@@ -43,20 +81,14 @@ def predmix_empbern_cs(
 
     Parameters
     ----------
-    x, array-like of reals
+    x, array-like of 0-1 bounded reals
         Observations of numbers between 0 and 1
 
     lambda_params, array-like of reals
         lambda values for online mixture
 
     alpha, positive real
-        Confidence level in (0, 1)
-
-    lower_bd, real
-        A-priori known lower bound for the observations
-
-    upper_bd, real
-        A-priori known upper bound for the observations
+        Significance level in (0, 1)
 
     Returns
     -------
@@ -103,21 +135,23 @@ def predmix_hoeffding_cs(
 
     Parameters
     ----------
-    x, array-like of reals
+    x, array-like of 0-1 bounded reals
         Observations of numbers between 0 and 1
+
     lambda_params, array-like of reals
         lambda values for online mixture
+
     alpha, positive real
-        Confidence level in (0, 1)
-    lower_bd, real
-        A-priori known lower bound for the observations
-    upper_bd, real
-        A-priori known upper bound for the observations
+        Significance level in (0, 1)
+
+    running_intersection, boolean
+        Should the running intersection be taken?
 
     Returns
     -------
     l, array-like of reals
         Lower confidence sequence for the mean
+
     u, array-like of reals
         Upper confidence sequence for the mean
     """
