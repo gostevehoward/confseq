@@ -7,7 +7,7 @@ import multiprocess
 from copy import copy, deepcopy
 from logging import info, warnings
 
-from .predmix import lambda_predmix_eb
+from confseq.predmix import lambda_predmix_eb
 
 
 def betting_mart(
