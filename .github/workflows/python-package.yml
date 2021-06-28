@@ -41,5 +41,7 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --exclude test/googletest-*
     - name: Run unit tests
       run: |
-        # Run c++ tests
+        # Run c++ unit tests
         make -C test runtests
+        # Run python unit tests, but ignore googletest library
+        pytest --ignore=test/googletest-1.8.1/
