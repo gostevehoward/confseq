@@ -14,10 +14,8 @@ def betting_mart(
     x,
     m,
     alpha=0.05,
-    fixed_n=None,
     lambdas_fn_positive=None,
     lambdas_fn_negative=None,
-    WoR=False,
     N=None,
     convex_comb=False,
     theta=1 / 2,
@@ -32,10 +30,47 @@ def betting_mart(
     ----------
     x, array-like
         The vector of observations between 0 and 1.
+
     m, real
         Null value for the mean of x
+
     alpha, real
         Significance level between 0 and 1.
+
+    lambdas_fn_postive, bivariate function or None
+        Function of `x` and `m` which generates an array-like
+        of bets with the same length as `x`.
+
+    lambdas_fn_negative=None, bivariate function or None
+        Same as above but for the negative capital process.
+        This will be set to lambdas_fn_positive if
+        left as None.
+    
+    N, positive integer or None
+        Population size if sampling WoR
+
+    convex_comb, boolean
+        Should a convex combination of martingales be taken?
+        If True, the process will be theta*pcp + (1-theta)*ncp,
+        and if False, it will be max(theta*pcp, (1-theta)*ncp) where
+        pcp and ncp are the positive and negative capital processes,
+        respectively.
+
+    theta, [0, 1]-valued real
+        Positive/negative capital process weight as
+        defined in `convex_comb`
+
+    trunc_scale, (0, 1]-valued real
+        The factor by which to multiply the truncation defined
+        in `m_trunc`. Leaving this as 1 will perform no
+        additional truncation.
+
+    m_trunc, boolean
+        Should truncation be used based on m? If True, then truncation
+        will be given by trunc_scale * 1/m or trunc_scale * 1/(1-m)
+        depending on the capital process. If False, then truncation
+        will be given by trunc_scale.
+
 
     Returns
     -------
@@ -44,14 +79,12 @@ def betting_mart(
     """
 
     if lambdas_fn_positive is None:
-        lambdas_fn_positive = lambda x, m: lambda_predmix_eb(
-            x, alpha=alpha, fixed_n=fixed_n
-        )
+        lambdas_fn_positive = lambda x, m: lambda_predmix_eb(x, alpha=alpha)
 
     if lambdas_fn_negative is None:
         lambdas_fn_negative = lambdas_fn_positive
 
-    if WoR:
+    if N is not None:
         t = np.arange(1, len(x) + 1)
         S_t = np.cumsum(x)
         S_tminus1 = np.append(0, S_t[0 : (len(x) - 1)])
@@ -123,15 +156,12 @@ def betting_cs(
     lambdas_fns_positive=None,
     lambdas_fns_negative=None,
     alpha=0.05,
-    convex_comb=False,
-    theta=1 / 2,
-    WoR=False,
     N=None,
     breaks=1000,
-    fake_obs=1,
-    fixed_n=None,
     running_intersection=False,
     parallel=False,
+    convex_comb=False,
+    theta=1 / 2,
     trunc_scale=1 / 2,
     m_trunc=True,
 ):
@@ -143,12 +173,56 @@ def betting_cs(
     ----------
     x, array-like
         The vector of observations between 0 and 1.
-    lambdas, array-like of reals
-        Lambda parameters to tune the shape of the CS
+
+    m, real
+        Null value for the mean of x
+
+    alpha, real
+        Significance level between 0 and 1.
+
+    lambdas_fn_postive, bivariate function or None
+        Function of `x` and `m` which generates an array-like
+        of bets with the same length as `x`.
+
+    lambdas_fn_negative=None, bivariate function or None
+        Same as above but for the negative capital process.
+        This will be set to lambdas_fn_positive if
+        left as None.
+    
+    N, positive integer or None
+        Population size if sampling WoR
+
     breaks, positive integer
         Number of breaks in the grid for constructing the confidence sequence
-    alpha, positive real
-        Significance level between 0 and 1.
+    
+    running_intersection, boolean
+        Should the running intersection be taken?
+
+    parallel, boolean
+        Should computation be parallelized?
+
+    convex_comb, boolean
+        Should a convex combination of martingales be taken?
+        If True, the process will be theta*pcp + (1-theta)*ncp,
+        and if False, it will be max(theta*pcp, (1-theta)*ncp) where
+        pcp and ncp are the positive and negative capital processes,
+        respectively.
+
+    theta, [0, 1]-valued real
+        Positive/negative capital process weight as
+        defined in `convex_comb`
+
+    trunc_scale, (0, 1]-valued real
+        The factor by which to multiply the truncation defined
+        in `m_trunc`. Leaving this as 1 will perform no
+        additional truncation.
+
+    m_trunc, boolean
+        Should truncation be used based on m? If True, then truncation
+        will be given by trunc_scale * 1/m or trunc_scale * 1/(1-m)
+        depending on the capital process. If False, then truncation
+        will be given by trunc_scale.
+
 
     Returns
     -------
@@ -173,8 +247,6 @@ def betting_cs(
         alpha=alpha,
         lambdas_fns_positive=lambdas_fns_positive,
         lambdas_fns_negative=lambdas_fns_negative,
-        fixed_n=fixed_n,
-        WoR=WoR,
         N=N,
         theta=theta,
         convex_comb=convex_comb,
@@ -202,8 +274,6 @@ def diversified_betting_mart(
     lambdas_fns_negative=None,
     lambdas_weights=None,
     alpha=None,
-    fixed_n=None,
-    WoR=False,
     N=None,
     convex_comb=False,
     theta=1 / 2,
@@ -230,10 +300,8 @@ def diversified_betting_mart(
             x,
             m,
             alpha=alpha,
-            fixed_n=fixed_n,
             lambdas_fn_positive=lambdas_fn_positive,
             lambdas_fn_negative=lambdas_fn_negative,
-            WoR=WoR,
             N=N,
             theta=theta,
             convex_comb=convex_comb,
@@ -249,8 +317,8 @@ def cs_from_martingale(
     breaks=1000,
     alpha=0.05,
     N=None,
-    parallel=False,
     running_intersection=False,
+    parallel=False,
 ):
     """
     Given a test supermartingale, produce a confidence sequence for
@@ -261,19 +329,25 @@ def cs_from_martingale(
     ----------
     x, array-like
         The vector of observations between 0 and 1.
+
     mart_fn, bivariate function
-        The martingale function which accepts an array-like of real values
-        between 0 and 1, and a real null value between 0 and 1 and produces
-        a numpy array of the same length containing the martingale at each time
+        A function which takes data `x` and a candidate mean `m`
+        and outputs a (super)martingale.
+    
     breaks, positive integer
-        The number of breaks in the grid. A break number of 1000 corresponds
-        to dividing the searchable grid into 1000 chunks at each time.
-    alpha, positive real
-        Significance level between 0 and 1
+        Number of breaks in the grid for constructing the confidence sequence
+
+    alpha, real
+        Significance level between 0 and 1.
+
     N, positive integer or None
-        If sampling without replacement, this is the population size.
+        Population size if sampling WoR
+
+    running_intersection, boolean
+        Should the running intersection be taken?
+
     parallel, boolean
-        Should this function be parallelized?
+        Should computation be parallelized?
 
     Returns
     -------
@@ -430,28 +504,71 @@ def mu_t(x, m, N):
 def betting_ci(
     x,
     alpha=0.05,
-    breaks=1000,
     lambdas_fns_positive=None,
     lambdas_fns_negative=None,
-    WoR=False,
     N=None,
+    breaks=1000,
     running_intersection=True,
+    parallel=False,
+    convex_comb=False,
+    theta=1/2,
     trunc_scale=1,
     m_trunc=False,
 ):
     """
-    Fixed-time, B-EB martingale-based confidence interval
+    Fixed-time, betting-based confidence interval
 
     Parameters
     ----------
     x, array-like
-        The sequence of bounded real numbers between 0 and 1
+        The vector of observations between 0 and 1.
+
     alpha, real
-        Error level between 0 and 1
+        Significance level between 0 and 1.
+
+    lambdas_fn_postive, bivariate function or None
+        Function of `x` and `m` which generates an array-like
+        of bets with the same length as `x`.
+
+    lambdas_fn_negative=None, bivariate function or None
+        Same as above but for the negative capital process.
+        This will be set to lambdas_fn_positive if
+        left as None.
+    
+    N, positive integer or None
+        Population size if sampling WoR
+
     breaks, positive integer
-        The number of breaks in the confidence interval. More breaks
-        yields a more granular confidence interval but will require
-        more computation time.
+        Number of breaks in the grid for constructing the confidence sequence
+    
+    running_intersection, boolean
+        Should the running intersection be taken?
+
+    parallel, boolean
+        Should computation be parallelized?
+
+    convex_comb, boolean
+        Should a convex combination of martingales be taken?
+        If True, the process will be theta*pcp + (1-theta)*ncp,
+        and if False, it will be max(theta*pcp, (1-theta)*ncp) where
+        pcp and ncp are the positive and negative capital processes,
+        respectively.
+
+    theta, [0, 1]-valued real
+        Positive/negative capital process weight as
+        defined in `convex_comb`
+
+    trunc_scale, (0, 1]-valued real
+        The factor by which to multiply the truncation defined
+        in `m_trunc`. Leaving this as 1 will perform no
+        additional truncation.
+
+    m_trunc, boolean
+        Should truncation be used based on m? If True, then truncation
+        will be given by trunc_scale * 1/m or trunc_scale * 1/(1-m)
+        depending on the capital process. If False, then truncation
+        will be given by trunc_scale.
+
     Returns
     -------
     l, real
@@ -466,13 +583,13 @@ def betting_ci(
         x,
         alpha=alpha,
         breaks=breaks,
-        fixed_n=n,
         lambdas_fns_positive=lambdas_fns_positive,
         lambdas_fns_negative=lambdas_fns_negative,
-        WoR=WoR,
         N=N,
         running_intersection=running_intersection,
-        parallel=False,
+        parallel=parallel,
+        convex_comb=convex_comb,
+        theta=theta,
         trunc_scale=trunc_scale,
         m_trunc=m_trunc,
     )
@@ -481,6 +598,33 @@ def betting_ci(
 
 
 def get_ci_seq(x, ci_fn, times, parallel=False):
+    """
+    Get sequence of confidence intervals
+    
+    Parameters
+    ----------
+    x, array-like
+        The vector of observations between 0 and 1.
+
+    ci_fn, univariate function
+        A function which takes an array-like of bounded numbers `x`
+        and outputs a tuple `(l, u)` of lower and upper confidence
+        intervals. Note that `l` and `u` are scalars (not vectors).
+    
+    times, array-like of positive integers
+        Times at which to compute the confidence interval.
+        
+    parallel, boolean
+        Should this function be parallelized?
+        
+    Returns
+    -------
+    l, array-like of [0, 1]-valued reals
+        Lower confidence intervals
+
+    u, array-like of [0, 1]-valued reals
+        Upper confidence intervals
+    """
     x = np.array(x)
 
     l = np.repeat(0.0, len(times))
@@ -507,11 +651,12 @@ def betting_ci_seq(
     times,
     lambdas_fns_positive=None,
     lambdas_fns_negative=None,
-    breaks=1000,
-    WoR=False,
     N=None,
-    parallel=False,
+    breaks=1000,
     running_intersection=True,
+    parallel=False,
+    convex_comb=False,
+    theta=1/2,
     trunc_scale=0.9,
     m_trunc=True,
 ):
@@ -521,25 +666,61 @@ def betting_ci_seq(
     Parameters
     ----------
     x, array-like
-        The sequence of bounded real numbers between 0 and 1
-    alpha, real
-        Error level between 0 and 1
-    times, array-like of positive integers
-        The list of times at which to compute the CI. Computing at every
-        time will yield a granular sequence of fixed-time CIs but will
-        take more computation.
-    lambdas, array-like of reals
-        Lambda parameters for the betting martingale.
+        The vector of observations between 0 and 1.
+
+    alpha, (0, 1)-bounded real
+        Significance level between 0 and 1.
+
+    lambdas_fn_postive, bivariate function or None
+        Function of `x` and `m` which generates an array-like
+        of bets with the same length as `x`.
+
+    lambdas_fn_negative=None, bivariate function or None
+        Same as above but for the negative capital process.
+        This will be set to lambdas_fn_positive if
+        left as None.
+    
+    N, positive integer or None
+        Population size if sampling WoR
+
     breaks, positive integer
-        The number of breaks in the confidence interval. More breaks
-        yields a more granular confidence interval but will require
-        more computation time.
+        Number of breaks in the grid for constructing the confidence sequence
+    
+    running_intersection, boolean
+        Should the running intersection be taken?
+
+    parallel, boolean
+        Should computation be parallelized?
+
+    convex_comb, boolean
+        Should a convex combination of martingales be taken?
+        If True, the process will be theta*pcp + (1-theta)*ncp,
+        and if False, it will be max(theta*pcp, (1-theta)*ncp) where
+        pcp and ncp are the positive and negative capital processes,
+        respectively.
+
+    theta, [0, 1]-valued real
+        Positive/negative capital process weight as
+        defined in `convex_comb`
+
+    trunc_scale, (0, 1]-valued real
+        The factor by which to multiply the truncation defined
+        in `m_trunc`. Leaving this as 1 will perform no
+        additional truncation.
+
+    m_trunc, boolean
+        Should truncation be used based on m? If True, then truncation
+        will be given by trunc_scale * 1/m or trunc_scale * 1/(1-m)
+        depending on the capital process. If False, then truncation
+        will be given by trunc_scale.
+
     Returns
     -------
     l, array-like of reals
-        Lower confidence bounds
+        Lower confidence intervals
+
     u, array-like of reals
-        Upper confidence bounds
+        Upper confidence intervals
     """
 
     def ci_fn(x):
@@ -549,9 +730,10 @@ def betting_ci_seq(
             breaks=breaks,
             lambdas_fns_positive=lambdas_fns_positive,
             lambdas_fns_negative=lambdas_fns_negative,
-            WoR=WoR,
             N=N,
             running_intersection=running_intersection,
+            convex_comb=convex_comb,
+            theta=theta,
             trunc_scale=trunc_scale,
             m_trunc=m_trunc,
         )

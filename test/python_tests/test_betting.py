@@ -74,7 +74,7 @@ def test_betting_mart_WoR(m):
     N = 1000
     x = np.random.binomial(1, 0.5, N)
     S_t = np.cumsum(x)
-    mart_WoR = betting_mart(x, m=m, WoR=True, N=N)
+    mart_WoR = betting_mart(x, m=m, N=N)
 
     assert all(mart_WoR[S_t / N > m] == math.inf)
 
