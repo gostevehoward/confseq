@@ -10,6 +10,114 @@ from logging import info, warnings
 from .predmix import lambda_predmix_eb
 
 
+def betting_mart(
+    x,
+    m,
+    alpha=0.05,
+    fixed_n=None,
+    lambdas_fn_positive=None,
+    lambdas_fn_negative=None,
+    WoR=False,
+    N=None,
+    convex_comb=False,
+    theta=1 / 2,
+    trunc_scale=1 / 2,
+    m_trunc=True,
+):
+    """
+    Betting martingale for a given sequence
+    of data and a null mean value.
+
+    Parameters
+    ----------
+    x, array-like
+        The vector of observations between 0 and 1.
+    m, real
+        Null value for the mean of x
+    alpha, real
+        Significance level between 0 and 1.
+
+    Returns
+    -------
+    mart, array-like
+        The martingale that results from the observed x
+    """
+
+    if lambdas_fn_positive is None:
+        lambdas_fn_positive = lambda x, m: lambda_predmix_eb(
+            x, alpha=alpha, fixed_n=fixed_n
+        )
+
+    if lambdas_fn_negative is None:
+        lambdas_fn_negative = lambdas_fn_positive
+
+    if WoR:
+        t = np.arange(1, len(x) + 1)
+        S_t = np.cumsum(x)
+        S_tminus1 = np.append(0, S_t[0 : (len(x) - 1)])
+        mu_t = (N * m - S_tminus1) / (N - (t - 1))
+    else:
+        mu_t = np.repeat(m, len(x))
+
+    lambdas_positive = lambdas_fn_positive(x, m)
+    lambdas_negative = lambdas_fn_negative(x, m)
+
+    # if we want to truncate with m
+    if m_trunc:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            upper_trunc = trunc_scale / mu_t
+            lower_trunc = trunc_scale / (1 - mu_t)
+
+        if any(upper_trunc == math.inf):
+            info("Truncating at 1000 instead of infinity")
+            upper_trunc[upper_trunc == math.inf] = 1000
+        if any(lower_trunc == math.inf):
+            info("Truncating at -1000 instead of -infinity")
+            lower_trunc[lower_trunc == math.inf] = 1000
+    else:
+        upper_trunc = trunc_scale
+        lower_trunc = trunc_scale
+
+    # perform truncation
+    lambdas_positive = np.maximum(-lower_trunc, lambdas_positive)
+    lambdas_positive = np.minimum(upper_trunc, lambdas_positive)
+
+    lambdas_negative = np.maximum(-upper_trunc, lambdas_negative)
+    lambdas_negative = np.minimum(lower_trunc, lambdas_negative)
+
+    capital_process_positive = np.cumprod(1 + lambdas_positive * (x - mu_t))
+    capital_process_negative = np.cumprod(1 - lambdas_negative * (x - mu_t))
+
+    if theta == 1:
+        capital_process = theta * capital_process_positive
+    elif theta == 0:
+        capital_process = (1 - theta) * capital_process_negative
+    else:
+        if convex_comb:
+            capital_process = (
+                theta * capital_process_positive
+                + (1 - theta) * capital_process_negative
+            )
+        else:
+            capital_process = np.maximum(
+                theta * capital_process_positive, (1 - theta) * capital_process_negative
+            )
+
+    capital_process[mu_t <= 0] = math.inf
+    capital_process[mu_t >= 1] = math.inf
+    if any(capital_process < 0):
+        assert all(capital_process >= 0)
+
+    if any(np.isnan(capital_process)):
+        warnings.warn("Martingale has nans")
+        where = np.where(np.isnan(capital_process))[0]
+
+        assert not any(np.isnan(capital_process))
+
+    return capital_process
+
+
 def betting_cs(
     x,
     lambdas_fns_positive=None,
@@ -86,111 +194,6 @@ def betting_cs(
         u = np.minimum.accumulate(u)
 
     return l, u
-
-
-def betting_mart(
-    x,
-    m,
-    alpha=0.05,
-    fixed_n=None,
-    lambdas_fn_positive=None,
-    lambdas_fn_negative=None,
-    WoR=False,
-    N=None,
-    convex_comb=False,
-    theta=1 / 2,
-    trunc_scale=1 / 2,
-    m_trunc=True,
-):
-    """
-    Betting martingale for a given sequence
-    of data and a null mean value.
-
-    Parameters
-    ----------
-    x, array-like
-        The vector of observations between 0 and 1.
-    m, real
-        Null value for the mean of x
-    alpha, real
-        Significance level between 0 and 1.
-
-    Returns
-    -------
-    mart, array-like
-        The martingale that results from the observed x
-    """
-
-    if lambdas_fn_positive is None:
-        lambdas_fn_positive = lambda x, m: lambda_predmix_eb(
-            x, alpha=alpha, fixed_n=fixed_n
-        )
-
-    if lambdas_fn_negative is None:
-        lambdas_fn_negative = lambdas_fn_positive
-
-    if WoR:
-        t = np.arange(1, len(x) + 1)
-        S_t = np.cumsum(x)
-        S_tminus1 = np.append(0, S_t[0 : (len(x) - 1)])
-        mu_t = (N * m - S_tminus1) / (N - (t - 1))
-    else:
-        mu_t = np.repeat(m, len(x))
-
-    lambdas_positive = lambdas_fn_positive(x, m)
-    lambdas_negative = lambdas_fn_negative(x, m)
-
-    # if we want to truncate with m
-    if m_trunc:
-        upper_trunc = trunc_scale / mu_t
-        if any(upper_trunc == math.inf):
-            warnings.warn("Truncating at 1000 instead of infinity")
-            upper_trunc[upper_trunc == math.inf] = 1000
-        lower_trunc = trunc_scale / (1 - mu_t)
-        if any(lower_trunc == math.inf):
-            warnings.warn("Truncating at -1000 instead of -infinity")
-            lower_trunc[lower_trunc == math.inf] = 1000
-    else:
-        upper_trunc = trunc_scale
-        lower_trunc = trunc_scale
-
-    # perform truncation
-    lambdas_positive = np.maximum(-lower_trunc, lambdas_positive)
-    lambdas_positive = np.minimum(upper_trunc, lambdas_positive)
-
-    lambdas_negative = np.maximum(-upper_trunc, lambdas_negative)
-    lambdas_negative = np.minimum(lower_trunc, lambdas_negative)
-
-    capital_process_positive = np.cumprod(1 + lambdas_positive * (x - mu_t))
-    capital_process_negative = np.cumprod(1 - lambdas_negative * (x - mu_t))
-
-    if theta == 1:
-        capital_process = theta * capital_process_positive
-    elif theta == 0:
-        capital_process = (1 - theta) * capital_process_negative
-    else:
-        if convex_comb:
-            capital_process = (
-                theta * capital_process_positive
-                + (1 - theta) * capital_process_negative
-            )
-        else:
-            capital_process = np.maximum(
-                theta * capital_process_positive, (1 - theta) * capital_process_negative
-            )
-
-    capital_process[mu_t <= 0] = math.inf
-    capital_process[mu_t >= 1] = math.inf
-    if any(capital_process < 0):
-        assert all(capital_process >= 0)
-
-    if any(np.isnan(capital_process)):
-        warnings.warn("Martingale has nans")
-        where = np.where(np.isnan(capital_process))[0]
-
-        assert not any(np.isnan(capital_process))
-
-    return capital_process
 
 
 def diversified_betting_mart(
@@ -313,56 +316,61 @@ def cs_from_martingale(x, mart_fn, breaks=1000, alpha=0.05, N=None, parallel=Fal
     return l, u
 
 
-def betting_cs_hedged(
-    x,
-    alpha=0.05,
-    theta=1 / 2,
-    breaks=1000,
-    running_intersection=False,
-    trunc_scale=1 / 2,
-):
-    n = len(x)
+def hedged_cs():
+    # TODO: just instantiate betting_cs with hedged parameters.
+    pass
 
-    lambdas = lambda_predmix_eb(
-        x, truncation=math.inf, alpha=alpha / 2, prior_mean=1 / 2, prior_variance=1 / 4
-    )
-    possible_m = np.arange(0, 1 + 1 / breaks, step=1 / breaks)
-    x_mtx = np.tile(x, (breaks + 1, 1))
-    m_mtx = np.tile(possible_m, (n, 1)).transpose()
 
-    lambdas_mtx_positive = np.tile(lambdas, (breaks + 1, 1))
-    lambdas_mtx_negative = copy.deepcopy(lambdas_mtx_positive)
-    lambdas_mtx_positive = np.minimum(lambdas_mtx_positive, trunc_scale / m_mtx)
-    lambdas_mtx_negative = np.minimum(lambdas_mtx_negative, trunc_scale / (1 - m_mtx))
-    # capital matrix, positive part
-    cap_mtx_pos = np.cumprod(1 + lambdas_mtx_positive * (x_mtx - m_mtx), axis=1)
-    # capital matrix, negative part
-    cap_mtx_neg = np.cumprod(1 - lambdas_mtx_negative * (x_mtx - m_mtx), axis=1)
-    capital_mtx = theta * cap_mtx_pos + (1 - theta) * cap_mtx_neg
+# def betting_cs_hedged(
+#     x,
+#     alpha=0.05,
+#     theta=1 / 2,
+#     breaks=1000,
+#     running_intersection=False,
+#     trunc_scale=1 / 2,
+# ):
+#     n = len(x)
 
-    lu = np.array(
-        [
-            (possible_m[no_reject[0]], possible_m[no_reject[-1]])
-            for no_reject in [
-                np.where(capital_mtx[:, i] < 1 / alpha)[0] for i in range(n)
-            ]
-        ]
-    ).transpose()
-    l, u = lu[0, :], lu[1, :]
+#     lambdas = lambda_predmix_eb(
+#         x, truncation=math.inf, alpha=alpha / 2, prior_mean=1 / 2, prior_variance=1 / 4
+#     )
+#     possible_m = np.arange(0, 1 + 1 / breaks, step=1 / breaks)
+#     x_mtx = np.tile(x, (breaks + 1, 1))
+#     m_mtx = np.tile(possible_m, (n, 1)).transpose()
 
-    # Take superset since we're gridding up [0, 1]
-    l = l - 1 / breaks
-    u = u + 1 / breaks
+#     lambdas_mtx_positive = np.tile(lambdas, (breaks + 1, 1))
+#     lambdas_mtx_negative = copy.deepcopy(lambdas_mtx_positive)
+#     lambdas_mtx_positive = np.minimum(lambdas_mtx_positive, trunc_scale / m_mtx)
+#     lambdas_mtx_negative = np.minimum(lambdas_mtx_negative, trunc_scale / (1 - m_mtx))
+#     # capital matrix, positive part
+#     cap_mtx_pos = np.cumprod(1 + lambdas_mtx_positive * (x_mtx - m_mtx), axis=1)
+#     # capital matrix, negative part
+#     cap_mtx_neg = np.cumprod(1 - lambdas_mtx_negative * (x_mtx - m_mtx), axis=1)
+#     capital_mtx = theta * cap_mtx_pos + (1 - theta) * cap_mtx_neg
 
-    # intersect with [0, 1]
-    l = np.maximum(l, 0)
-    u = np.minimum(u, 1)
+#     lu = np.array(
+#         [
+#             (possible_m[no_reject[0]], possible_m[no_reject[-1]])
+#             for no_reject in [
+#                 np.where(capital_mtx[:, i] < 1 / alpha)[0] for i in range(n)
+#             ]
+#         ]
+#     ).transpose()
+#     l, u = lu[0, :], lu[1, :]
 
-    if running_intersection:
-        l = np.maximum.accumulate(l)
-        u = np.minimum.accumulate(u)
+#     # Take superset since we're gridding up [0, 1]
+#     l = l - 1 / breaks
+#     u = u + 1 / breaks
 
-    return l, u
+#     # intersect with [0, 1]
+#     l = np.maximum(l, 0)
+#     u = np.minimum(u, 1)
+
+#     if running_intersection:
+#         l = np.maximum.accumulate(l)
+#         u = np.minimum.accumulate(u)
+
+#     return l, u
 
 
 def logical_cs(x, N):
@@ -441,7 +449,6 @@ def betting_ci(
     """
     x = np.array(x)
     n = len(x)
-    t = np.arange(1, len(x) + 1)
 
     l, u = betting_cs(
         x,
