@@ -125,7 +125,6 @@ def betting_cs(
     alpha=0.05,
     convex_comb=False,
     theta=1 / 2,
-    GROW=False,
     WoR=False,
     N=None,
     breaks=1000,
@@ -175,7 +174,6 @@ def betting_cs(
         lambdas_fns_positive=lambdas_fns_positive,
         lambdas_fns_negative=lambdas_fns_negative,
         fixed_n=fixed_n,
-        GROW=GROW,
         WoR=WoR,
         N=N,
         theta=theta,
@@ -204,14 +202,12 @@ def diversified_betting_mart(
     lambdas_weights=None,
     alpha=None,
     fixed_n=None,
-    GROW=False,
     WoR=False,
     N=None,
     convex_comb=False,
     theta=1 / 2,
     trunc_scale=1 / 2,
     m_trunc=True,
-    fake_obs=1,
 ):
     mart = np.zeros(len(x))
 
@@ -236,12 +232,10 @@ def diversified_betting_mart(
             fixed_n=fixed_n,
             lambdas_fn_positive=lambdas_fn_positive,
             lambdas_fn_negative=lambdas_fn_negative,
-            GROW=GROW,
             WoR=WoR,
             N=N,
             theta=theta,
             convex_comb=convex_comb,
-            fake_obs=fake_obs,
             trunc_scale=trunc_scale,
             m_trunc=m_trunc,
         )
@@ -320,6 +314,9 @@ def hedged_cs():
     # TODO: just instantiate betting_cs with hedged parameters.
     pass
 
+def dKelly_cs():
+    # TODO: just instantiate betting_cs with dKelly parameters.
+    pass
 
 # def betting_cs_hedged(
 #     x,
