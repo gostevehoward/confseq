@@ -34,7 +34,8 @@ setup(
     package_dir={'': 'src'},
     cmake_install_dir="src/confseq",
     include_package_data = True,
-    install_requires=['pybind11>=2.3', 'numpy'],
+    install_requires=['pybind11>=2.3', 'numpy', 'matplotlib', 'multiprocess',
+                      'scipy', 'pytest', 'pandas'],
     zip_safe=False,
     classifiers=[
         "Programming Language :: Python :: 3",
