@@ -32,7 +32,9 @@ jobs:
         sudo apt-get install libboost-all-dev
         python -m pip install --upgrade pip
         python -m pip install flake8 pytest
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    - name: Install confseq package
+      run: |
+        pip install -e ./
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
@@ -41,5 +43,7 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --exclude test/googletest-*
     - name: Run unit tests
       run: |
-        # Run c++ tests
+        # Run c++ unit tests
         make -C test runtests
+        # Run python unit tests, but ignore googletest library
+        pytest --ignore=test/googletest-1.8.1/
