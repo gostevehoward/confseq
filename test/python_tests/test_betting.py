@@ -35,8 +35,8 @@ def test_betting_mart_power():
     # Make sure theta=0,1 have one-sided power, while theta=1/2 has two-sided power
     theta = 1 / 2
     x = np.random.binomial(1, 0.5, 10000)
-    mart1 = betting_mart(x, 0.4, theta=theta)
-    mart2 = betting_mart(x, 0.6, theta=theta)
+    mart1 = betting_mart(x, 0.25, theta=theta)
+    mart2 = betting_mart(x, 0.75, theta=theta)
 
     # Should have two-sided power
     # This will fail with some small probability
