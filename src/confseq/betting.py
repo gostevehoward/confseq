@@ -178,7 +178,6 @@ def betting_cs(
         N=N,
         theta=theta,
         convex_comb=convex_comb,
-        fake_obs=fake_obs,
         trunc_scale=trunc_scale,
         m_trunc=m_trunc,
     )
@@ -188,7 +187,6 @@ def betting_cs(
         mart_fn,
         breaks=breaks,
         alpha=alpha,
-        WoR=WoR,
         N=N,
         parallel=parallel,
         running_intersection=running_intersection,
@@ -431,7 +429,7 @@ def mu_t(x, m, N):
 
 def betting_ci(
     x,
-    alpha,
+    alpha=0.05,
     breaks=1000,
     lambdas_fns_positive=None,
     lambdas_fns_negative=None,
