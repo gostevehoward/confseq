@@ -1,0 +1,7 @@
+scikit_build==0.11.1
+matplotlib==3.4.2
+multiprocess==0.70.12.2
+numpy==1.21.0
+pytest==6.2.4
+scipy==1.7.0
+pandas==1.2.5
