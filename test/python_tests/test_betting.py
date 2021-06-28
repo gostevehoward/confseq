@@ -130,7 +130,7 @@ def test_mu_t():
     x = np.random.binomial(1, 0.5, N)
     mu_t_list = mu_t(x, m=np.mean(x), N=N)
     mean_remaining_pop_list = np.array([np.mean(x[i:N]) for i in range(N)])
-    assert all(mu_t_list == mean_remaining_pop_list)
+    assert all(abs(mu_t_list - mean_remaining_pop_list) < 10e-12)
 
 
 def test_logical_cs():
