@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from time import time
 from scipy.optimize import minimize, newton, root
 import multiprocess
-from copy import copy
+from copy import copy, deepcopy
 from logging import info, warnings
 
 from .predmix import lambda_predmix_eb
@@ -95,14 +95,10 @@ def betting_mart(
     fixed_n=None,
     lambdas_fn_positive=None,
     lambdas_fn_negative=None,
-    prior_mean=1 / 2,
-    prior_variance=1 / 4,
-    GROW=False,
     WoR=False,
     N=None,
     convex_comb=False,
     theta=1 / 2,
-    fake_obs=1,
     trunc_scale=1 / 2,
     m_trunc=True,
 ):
@@ -126,7 +122,9 @@ def betting_mart(
     """
 
     if lambdas_fn_positive is None:
-        lambdas_fn_positive = lambda x, m: lambda_predmix_eb(x)
+        lambdas_fn_positive = lambda x, m: lambda_predmix_eb(
+            x, alpha=alpha, fixed_n=fixed_n
+        )
 
     if lambdas_fn_negative is None:
         lambdas_fn_negative = lambdas_fn_positive
@@ -167,9 +165,9 @@ def betting_mart(
     capital_process_negative = np.cumprod(1 - lambdas_negative * (x - mu_t))
 
     if theta == 1:
-        capital_process = capital_process_positive
+        capital_process = theta * capital_process_positive
     elif theta == 0:
-        capital_process = capital_process_negative
+        capital_process = (1 - theta) * capital_process_negative
     else:
         if convex_comb:
             capital_process = (
@@ -184,14 +182,10 @@ def betting_mart(
     capital_process[mu_t <= 0] = math.inf
     capital_process[mu_t >= 1] = math.inf
     if any(capital_process < 0):
-        print("lambdas_positive: " + str(lambdas_positive))
-        print("lambdas_negative: " + str(lambdas_negative))
-        print("martingale: " + str(capital_process))
-        print("Martingale is not nonnegative!")
         assert all(capital_process >= 0)
 
     if any(np.isnan(capital_process)):
-        print("Martingale has nans")
+        warnings.warn("Martingale has nans")
         where = np.where(np.isnan(capital_process))[0]
 
         assert not any(np.isnan(capital_process))
