@@ -184,12 +184,15 @@ def betting_cs(
     )
 
     l, u = cs_from_martingale(
-        x, mart_fn, breaks=breaks, alpha=alpha, WoR=WoR, N=N, parallel=parallel
+        x,
+        mart_fn,
+        breaks=breaks,
+        alpha=alpha,
+        WoR=WoR,
+        N=N,
+        parallel=parallel,
+        running_intersection=running_intersection,
     )
-
-    if running_intersection:
-        l = np.maximum.accumulate(l)
-        u = np.minimum.accumulate(u)
 
     return l, u
 
@@ -242,7 +245,15 @@ def diversified_betting_mart(
     return mart
 
 
-def cs_from_martingale(x, mart_fn, breaks=1000, alpha=0.05, N=None, parallel=False):
+def cs_from_martingale(
+    x,
+    mart_fn,
+    breaks=1000,
+    alpha=0.05,
+    N=None,
+    parallel=False,
+    running_intersection=False,
+):
     """
     Given a test supermartingale, produce a confidence sequence for
     any parameter using the grid method, assuming the parameter is
@@ -307,6 +318,10 @@ def cs_from_martingale(x, mart_fn, breaks=1000, alpha=0.05, N=None, parallel=Fal
         l = np.maximum(l, logical_l)
         u = np.minimum(u, logical_u)
 
+    if running_intersection:
+        l = np.maximum.accumulate(l)
+        u = np.minimum.accumulate(u)
+
     return l, u
 
 
@@ -314,9 +329,11 @@ def hedged_cs():
     # TODO: just instantiate betting_cs with hedged parameters.
     pass
 
+
 def dKelly_cs():
     # TODO: just instantiate betting_cs with dKelly parameters.
     pass
+
 
 # def betting_cs_hedged(
 #     x,
