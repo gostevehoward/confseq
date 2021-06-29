@@ -482,9 +482,52 @@ def dKelly_cs(
     parallel=False,
     theta=1 / 2,
 ):
+    """
+    Hedged capital confidence sequence.
+        This is simply an instantiation of `betting_cs`
+        with particular defaults for the hedged capital
+        martingale.
+
+    Parameters
+    ----------
+    x, array-like
+        The vector of observations between 0 and 1.
+
+    D, positive integer
+        The number of evenly-spaced constant bets to place
+        and average. Small values of D will be more computationally
+        tractable, while larger values of D will "diversify" the bets
+        more.
+
+    alpha, (0, 1)-valued real
+        Significance level
+
+    N, positive integer or None
+        Population size if sampling WoR
+
+    breaks, positive integer
+        Number of breaks in the grid for constructing the confidence sequence
+
+    running_intersection, boolean
+        Should the running intersection be taken?
+
+    parallel, boolean
+        Should computation be parallelized?
+
+    theta, [0, 1]-valued real
+        Positive/negative capital process weight.
+
+    Returns
+    -------
+    l, array-like
+        Lower confidence sequence for the mean
+
+    u, array-like
+        Upper confidence sequence for the mean
+    """
     return betting_cs(
         x,
-        lambdas_fns_positive=[lambda x, m, i=i: (i + 1) / D for i in range(D - 1)],
+        lambdas_fns_positive=[lambda x, m, i=i: (i + 1) / (D + 1) for i in range(D)],
         alpha=alpha,
         N=N,
         breaks=breaks,
