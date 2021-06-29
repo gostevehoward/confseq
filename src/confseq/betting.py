@@ -45,7 +45,7 @@ def betting_mart(
         Same as above but for the negative capital process.
         This will be set to lambdas_fn_positive if
         left as None.
-    
+
     N, positive integer or None
         Population size if sampling WoR
 
@@ -188,13 +188,13 @@ def betting_cs(
         Same as above but for the negative capital process.
         This will be set to lambdas_fn_positive if
         left as None.
-    
+
     N, positive integer or None
         Population size if sampling WoR
 
     breaks, positive integer
         Number of breaks in the grid for constructing the confidence sequence
-    
+
     running_intersection, boolean
         Should the running intersection be taken?
 
@@ -333,7 +333,7 @@ def cs_from_martingale(
     mart_fn, bivariate function
         A function which takes data `x` and a candidate mean `m`
         and outputs a (super)martingale.
-    
+
     breaks, positive integer
         Number of breaks in the grid for constructing the confidence sequence
 
@@ -511,7 +511,7 @@ def betting_ci(
     running_intersection=True,
     parallel=False,
     convex_comb=False,
-    theta=1/2,
+    theta=1 / 2,
     trunc_scale=1,
     m_trunc=False,
 ):
@@ -534,13 +534,13 @@ def betting_ci(
         Same as above but for the negative capital process.
         This will be set to lambdas_fn_positive if
         left as None.
-    
+
     N, positive integer or None
         Population size if sampling WoR
 
     breaks, positive integer
         Number of breaks in the grid for constructing the confidence sequence
-    
+
     running_intersection, boolean
         Should the running intersection be taken?
 
@@ -600,7 +600,7 @@ def betting_ci(
 def get_ci_seq(x, ci_fn, times, parallel=False):
     """
     Get sequence of confidence intervals
-    
+
     Parameters
     ----------
     x, array-like
@@ -610,13 +610,13 @@ def get_ci_seq(x, ci_fn, times, parallel=False):
         A function which takes an array-like of bounded numbers `x`
         and outputs a tuple `(l, u)` of lower and upper confidence
         intervals. Note that `l` and `u` are scalars (not vectors).
-    
+
     times, array-like of positive integers
         Times at which to compute the confidence interval.
-        
+
     parallel, boolean
         Should this function be parallelized?
-        
+
     Returns
     -------
     l, array-like of [0, 1]-valued reals
@@ -656,7 +656,7 @@ def betting_ci_seq(
     running_intersection=True,
     parallel=False,
     convex_comb=False,
-    theta=1/2,
+    theta=1 / 2,
     trunc_scale=0.9,
     m_trunc=True,
 ):
@@ -679,13 +679,13 @@ def betting_ci_seq(
         Same as above but for the negative capital process.
         This will be set to lambdas_fn_positive if
         left as None.
-    
+
     N, positive integer or None
         Population size if sampling WoR
 
     breaks, positive integer
         Number of breaks in the grid for constructing the confidence sequence
-    
+
     running_intersection, boolean
         Should the running intersection be taken?
 
