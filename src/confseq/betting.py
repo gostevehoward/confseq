@@ -166,16 +166,12 @@ def betting_cs(
     m_trunc=True,
 ):
     """
-    Confidence sequence for the mean using the Betting
-    empirical Bernstein martingale.
+    Betting-based confidence sequence
 
     Parameters
     ----------
     x, array-like
         The vector of observations between 0 and 1.
-
-    m, real
-        Null value for the mean of x
 
     alpha, real
         Significance level between 0 and 1.
@@ -228,6 +224,7 @@ def betting_cs(
     -------
     l, array-like
         Lower confidence sequence for the mean
+
     u, array-like
         Upper confidence sequence for the mean
     """
@@ -410,6 +407,47 @@ def hedged_cs(
     prior_variance=1 / 4,
     fake_obs=1,
 ):
+    """
+    Hedged capital confidence sequence.
+        This is simply an instantiation of `betting_cs`
+        with particular defaults for the hedged capital
+        martingale.
+
+    Parameters
+    ----------
+    x, array-like
+        The vector of observations between 0 and 1.
+
+    alpha, (0, 1)-valued real
+        Significance level
+
+    N, positive integer or None
+        Population size if sampling WoR
+
+    breaks, positive integer
+        Number of breaks in the grid for constructing the confidence sequence
+
+    running_intersection, boolean
+        Should the running intersection be taken?
+
+    parallel, boolean
+        Should computation be parallelized?
+
+    theta, [0, 1]-valued real
+        Positive/negative capital process weight.
+
+    trunc_scale, (0, 1]-valued real
+        The factor by which to multiply the truncation.
+        Leaving this as 1 will perform no additional truncation.
+
+    Returns
+    -------
+    l, array-like
+        Lower confidence sequence for the mean
+
+    u, array-like
+        Upper confidence sequence for the mean
+    """
     return betting_cs(
         x,
         lambdas_fns_positive=[
