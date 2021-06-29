@@ -45,7 +45,7 @@ def betting_mart(
         Same as above but for the negative capital process.
         This will be set to lambdas_fn_positive if
         left as None.
-    
+
     N, positive integer or None
         Population size if sampling WoR
 
@@ -188,13 +188,13 @@ def betting_cs(
         Same as above but for the negative capital process.
         This will be set to lambdas_fn_positive if
         left as None.
-    
+
     N, positive integer or None
         Population size if sampling WoR
 
     breaks, positive integer
         Number of breaks in the grid for constructing the confidence sequence
-    
+
     running_intersection, boolean
         Should the running intersection be taken?
 
@@ -333,7 +333,7 @@ def cs_from_martingale(
     mart_fn, bivariate function
         A function which takes data `x` and a candidate mean `m`
         and outputs a (super)martingale.
-    
+
     breaks, positive integer
         Number of breaks in the grid for constructing the confidence sequence
 
@@ -397,66 +397,66 @@ def cs_from_martingale(
     return l, u
 
 
-def hedged_cs():
-    # TODO: just instantiate betting_cs with hedged parameters.
-    pass
+def hedged_cs(
+    x,
+    alpha=0.05,
+    N=None,
+    breaks=1000,
+    running_intersection=True,
+    parallel=False,
+    theta=1 / 2,
+    trunc_scale=1 / 2,
+    prior_mean=1 / 2,
+    prior_variance=1 / 4,
+    fake_obs=1,
+):
+    return betting_cs(
+        x,
+        lambdas_fns_positive=[
+            lambda x, m: lambda_predmix_eb(
+                x,
+                alpha=alpha,
+                prior_mean=prior_mean,
+                prior_variance=prior_variance,
+                fake_obs=fake_obs,
+            )
+        ],
+        lambdas_fns_negative=[lambda_predmix_eb],
+        alpha=alpha,
+        N=N,
+        breaks=breaks,
+        running_intersection=running_intersection,
+        parallel=parallel,
+        convex_comb=False,
+        theta=theta,
+        trunc_scale=trunc_scale,
+        m_trunc=True,
+    )
 
 
-def dKelly_cs():
-    # TODO: just instantiate betting_cs with dKelly parameters.
-    pass
-
-
-# def betting_cs_hedged(
-#     x,
-#     alpha=0.05,
-#     theta=1 / 2,
-#     breaks=1000,
-#     running_intersection=False,
-#     trunc_scale=1 / 2,
-# ):
-#     n = len(x)
-
-#     lambdas = lambda_predmix_eb(
-#         x, truncation=math.inf, alpha=alpha / 2, prior_mean=1 / 2, prior_variance=1 / 4
-#     )
-#     possible_m = np.arange(0, 1 + 1 / breaks, step=1 / breaks)
-#     x_mtx = np.tile(x, (breaks + 1, 1))
-#     m_mtx = np.tile(possible_m, (n, 1)).transpose()
-
-#     lambdas_mtx_positive = np.tile(lambdas, (breaks + 1, 1))
-#     lambdas_mtx_negative = copy.deepcopy(lambdas_mtx_positive)
-#     lambdas_mtx_positive = np.minimum(lambdas_mtx_positive, trunc_scale / m_mtx)
-#     lambdas_mtx_negative = np.minimum(lambdas_mtx_negative, trunc_scale / (1 - m_mtx))
-#     # capital matrix, positive part
-#     cap_mtx_pos = np.cumprod(1 + lambdas_mtx_positive * (x_mtx - m_mtx), axis=1)
-#     # capital matrix, negative part
-#     cap_mtx_neg = np.cumprod(1 - lambdas_mtx_negative * (x_mtx - m_mtx), axis=1)
-#     capital_mtx = theta * cap_mtx_pos + (1 - theta) * cap_mtx_neg
-
-#     lu = np.array(
-#         [
-#             (possible_m[no_reject[0]], possible_m[no_reject[-1]])
-#             for no_reject in [
-#                 np.where(capital_mtx[:, i] < 1 / alpha)[0] for i in range(n)
-#             ]
-#         ]
-#     ).transpose()
-#     l, u = lu[0, :], lu[1, :]
-
-#     # Take superset since we're gridding up [0, 1]
-#     l = l - 1 / breaks
-#     u = u + 1 / breaks
-
-#     # intersect with [0, 1]
-#     l = np.maximum(l, 0)
-#     u = np.minimum(u, 1)
-
-#     if running_intersection:
-#         l = np.maximum.accumulate(l)
-#         u = np.minimum.accumulate(u)
-
-#     return l, u
+def dKelly_cs(
+    x,
+    D=10,
+    alpha=0.05,
+    N=None,
+    breaks=1000,
+    running_intersection=True,
+    parallel=False,
+    theta=1 / 2,
+):
+    return betting_cs(
+        x,
+        lambdas_fns_positive=[lambda x, m, i=i: (i + 1) / D for i in range(D - 1)],
+        alpha=alpha,
+        N=N,
+        breaks=breaks,
+        running_intersection=running_intersection,
+        parallel=parallel,
+        convex_comb=True,
+        theta=theta,
+        trunc_scale=1,
+        m_trunc=True,
+    )
 
 
 def logical_cs(x, N):
@@ -511,7 +511,7 @@ def betting_ci(
     running_intersection=True,
     parallel=False,
     convex_comb=False,
-    theta=1/2,
+    theta=1 / 2,
     trunc_scale=1,
     m_trunc=False,
 ):
@@ -534,13 +534,13 @@ def betting_ci(
         Same as above but for the negative capital process.
         This will be set to lambdas_fn_positive if
         left as None.
-    
+
     N, positive integer or None
         Population size if sampling WoR
 
     breaks, positive integer
         Number of breaks in the grid for constructing the confidence sequence
-    
+
     running_intersection, boolean
         Should the running intersection be taken?
 
@@ -600,7 +600,7 @@ def betting_ci(
 def get_ci_seq(x, ci_fn, times, parallel=False):
     """
     Get sequence of confidence intervals
-    
+
     Parameters
     ----------
     x, array-like
@@ -610,13 +610,13 @@ def get_ci_seq(x, ci_fn, times, parallel=False):
         A function which takes an array-like of bounded numbers `x`
         and outputs a tuple `(l, u)` of lower and upper confidence
         intervals. Note that `l` and `u` are scalars (not vectors).
-    
+
     times, array-like of positive integers
         Times at which to compute the confidence interval.
-        
+
     parallel, boolean
         Should this function be parallelized?
-        
+
     Returns
     -------
     l, array-like of [0, 1]-valued reals
@@ -656,7 +656,7 @@ def betting_ci_seq(
     running_intersection=True,
     parallel=False,
     convex_comb=False,
-    theta=1/2,
+    theta=1 / 2,
     trunc_scale=0.9,
     m_trunc=True,
 ):
@@ -679,13 +679,13 @@ def betting_ci_seq(
         Same as above but for the negative capital process.
         This will be set to lambdas_fn_positive if
         left as None.
-    
+
     N, positive integer or None
         Population size if sampling WoR
 
     breaks, positive integer
         Number of breaks in the grid for constructing the confidence sequence
-    
+
     running_intersection, boolean
         Should the running intersection be taken?
 
