@@ -7,6 +7,7 @@ look reasonable. It is advisable to run these before pushing to GitHub.
 from confseq.betting_plots import *
 from confseq.betting_strategies import *
 from confseq.betting import *
+from confseq.conjmix_bounded import conjmix_empbern_cs
 from confseq.predmix import *
 from scipy.stats import binom, beta
 
@@ -40,6 +41,12 @@ cs_list = [
         r"Hedged",
         "tab:green",
         "-",
+    ),
+    ConfseqToPlot(
+        lambda x: conjmix_empbern_cs(x, v_opt=500 / 4, running_intersection=True),
+        r"CM-EB",
+        "tab:red",
+        ":",
     ),
 ]
 
