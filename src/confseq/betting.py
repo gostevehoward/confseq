@@ -525,9 +525,18 @@ def dKelly_cs(
     u, array-like
         Upper confidence sequence for the mean
     """
+    if N is not None:
+        lambdas_fns_positive = [
+            lambda x, m, i=i: (i + 1) / (mu_t(x, m, N) * (D + 1)) for i in range(D)
+        ]
+    else:
+        lambdas_fns_positive = [
+            lambda x, m, i=i: (i + 1) / (m * (D + 1)) for i in range(D)
+        ]
+
     return betting_cs(
         x,
-        lambdas_fns_positive=[lambda x, m, i=i: (i + 1) / (D + 1) for i in range(D)],
+        lambdas_fns_positive=lambdas_fns_positive,
         alpha=alpha,
         N=N,
         breaks=breaks,
