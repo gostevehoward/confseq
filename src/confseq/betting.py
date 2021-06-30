@@ -529,14 +529,22 @@ def dKelly_cs(
         lambdas_fns_positive = [
             lambda x, m, i=i: (i + 1) / (mu_t(x, m, N) * (D + 1)) for i in range(D)
         ]
+        lambdas_fns_negative = [
+            lambda x, m, i=i: (i + 1) / ((1 - mu_t(x, m, N)) * (D + 1))
+            for i in range(D)
+        ]
     else:
         lambdas_fns_positive = [
             lambda x, m, i=i: (i + 1) / (m * (D + 1)) for i in range(D)
+        ]
+        lambdas_fns_negative = [
+            lambda x, m, i=i: (i + 1) / ((1 - m) * (D + 1)) for i in range(D)
         ]
 
     return betting_cs(
         x,
         lambdas_fns_positive=lambdas_fns_positive,
+        lambdas_fns_negative=lambdas_fns_negative,
         alpha=alpha,
         N=N,
         breaks=breaks,
