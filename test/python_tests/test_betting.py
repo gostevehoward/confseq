@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from confseq.betting import *
-from confseq.utils import superMG_crossing_fraction, expand_grid
+from confseq.misc import superMG_crossing_fraction, expand_grid
 from scipy.stats import binomtest
 from itertools import permutations
 
