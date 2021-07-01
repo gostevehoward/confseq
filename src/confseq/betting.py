@@ -101,13 +101,6 @@ def betting_mart(
             warnings.simplefilter("ignore")
             upper_trunc = trunc_scale / mu_t
             lower_trunc = trunc_scale / (1 - mu_t)
-
-        if any(upper_trunc == math.inf):
-            info("Truncating at 1000 instead of infinity")
-            upper_trunc[upper_trunc == math.inf] = 1000
-        if any(lower_trunc == math.inf):
-            info("Truncating at -1000 instead of -infinity")
-            lower_trunc[lower_trunc == math.inf] = 1000
     else:
         upper_trunc = trunc_scale
         lower_trunc = trunc_scale
@@ -137,8 +130,21 @@ def betting_mart(
                 theta * capital_process_positive, (1 - theta) * capital_process_negative
             )
 
-    capital_process[mu_t <= 0] = math.inf
-    capital_process[mu_t >= 1] = math.inf
+    # Need to deal with the case mu_t = 0, 1 separately.
+    if N is not None:
+        # If S_t / N > m, then we know with certainty that the mean
+        # is larger than m
+        capital_process[
+            np.logical_and(np.logical_or(mu_t <= 0, mu_t >= 1), S_t / N > m)
+        ] = math.inf
+    else:
+        # If mu_t == 0 and we've observed at least one nonzero x, we can't be
+        # under the null.
+        capital_process[np.logical_and(mu_t <= 0, np.count_nonzero(x) > 0)]
+        # Similarly, if mu_t == 1 and we've observed at least one non-one x,
+        # we can't be under the null.
+        capital_process[np.logical_and(mu_t >= 1, np.count_nonzero(x == 1) > 0)]
+
     if any(capital_process < 0):
         assert all(capital_process >= 0)
 
