@@ -95,25 +95,29 @@ def betting_mart(
     lambdas_positive = lambdas_fn_positive(x, m)
     lambdas_negative = lambdas_fn_negative(x, m)
 
+    assert 0 < trunc_scale <= 1
     # if we want to truncate with m
     if m_trunc:
         with np.errstate(divide="ignore"):
-            upper_trunc = trunc_scale / mu_t
-            lower_trunc = trunc_scale / (1 - mu_t)
+            lambdas_positive = np.minimum(lambdas_positive, trunc_scale / mu_t)
+            lambdas_positive = np.maximum(lambdas_positive, -trunc_scale / (1 - mu_t))
+
+            lambdas_negative = np.minimum(lambdas_negative, trunc_scale / (1 - mu_t))
+            lambdas_negative = np.maximum(lambdas_negative, -trunc_scale / mu_t)
     else:
-        upper_trunc = trunc_scale
-        lower_trunc = trunc_scale
+        lambdas_positive = np.minimum(lambdas_positive, trunc_scale)
+        lambdas_positive = np.maximum(lambdas_positive, -trunc_scale)
 
-    # perform truncation
-    lambdas_positive = np.maximum(-lower_trunc, lambdas_positive)
-    lambdas_positive = np.minimum(upper_trunc, lambdas_positive)
-
-    lambdas_negative = np.maximum(-upper_trunc, lambdas_negative)
-    lambdas_negative = np.minimum(lower_trunc, lambdas_negative)
+        lambdas_negative = np.minimum(lambdas_negative, trunc_scale)
+        lambdas_negative = np.maximum(lambdas_negative, -trunc_scale)
 
     with np.errstate(invalid="ignore"):
         capital_process_positive = np.cumprod(1 + lambdas_positive * (x - mu_t))
         capital_process_negative = np.cumprod(1 - lambdas_negative * (x - mu_t))
+
+    # If mu_t < 0 or mu_t > 1, we cannot be under the null
+    capital_process_positive[np.logical_or(mu_t < 0, mu_t > 1)] = math.inf
+    capital_process_negative[np.logical_or(mu_t < 0, mu_t > 1)] = math.inf
 
     # For cases where lambdas_positive = math.inf and x - mu_t = 0, we run into
     # inf * 0. This should be treated as -1 due to the limiting behaviour of
@@ -157,8 +161,7 @@ def betting_mart(
         # we can't be under the null.
         capital_process[np.logical_and(mu_t >= 1, np.count_nonzero(x == 1) > 0)]
 
-    if any(capital_process < 0):
-        assert all(capital_process >= 0)
+    assert all(capital_process >= 0)
 
     assert not any(np.isnan(capital_process))
 

@@ -119,7 +119,7 @@ def test_diversified_betting_mart(m):
         m=m,
         lambdas_fns_positive=[lambda x, m, i=i: (i + 1) / (K + 1) for i in range(K)],
         convex_comb=True,
-        trunc_scale=math.inf,
+        trunc_scale=1,
     )
     lambdas_matrix = np.tile(
         np.array([(i + 1) / (K + 1) for i in range(K)])[:, None], n
