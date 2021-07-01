@@ -301,32 +301,58 @@ def diversified_betting_mart(
     for k in range(K):
         lambdas_fn_positive = lambdas_fns_positive[k]
         lambdas_fn_negative = lambdas_fns_negative[k]
-        mart_positive = mart_positive + lambdas_weights[k] * betting_mart(
-            x,
-            m,
-            alpha=alpha,
-            lambdas_fn_positive=lambdas_fn_positive,
-            lambdas_fn_negative=lambdas_fn_negative,
-            N=N,
-            theta=1,
-            convex_comb=convex_comb,
-            trunc_scale=trunc_scale,
-            m_trunc=m_trunc,
-        )
-        mart_negative = mart_negative + lambdas_weights[k] * betting_mart(
-            x,
-            m,
-            alpha=alpha,
-            lambdas_fn_positive=lambdas_fn_positive,
-            lambdas_fn_negative=lambdas_fn_negative,
-            N=N,
-            theta=0,
-            convex_comb=convex_comb,
-            trunc_scale=trunc_scale,
-            m_trunc=m_trunc,
+
+        summand_positive = (
+            (
+                lambdas_weights[k]
+                * betting_mart(
+                    x,
+                    m,
+                    alpha=alpha,
+                    lambdas_fn_positive=lambdas_fn_positive,
+                    lambdas_fn_negative=lambdas_fn_negative,
+                    N=N,
+                    theta=1,
+                    trunc_scale=trunc_scale,
+                    m_trunc=m_trunc,
+                )
+            )
+            if lambdas_weights[k] != 0
+            else 0
         )
 
-    return theta * mart_positive + (1 - theta) * mart_negative
+        mart_positive = mart_positive + summand_positive
+
+        summand_negative = (
+            (
+                lambdas_weights[k]
+                * betting_mart(
+                    x,
+                    m,
+                    alpha=alpha,
+                    lambdas_fn_positive=lambdas_fn_positive,
+                    lambdas_fn_negative=lambdas_fn_negative,
+                    N=N,
+                    theta=0,
+                    trunc_scale=trunc_scale,
+                    m_trunc=m_trunc,
+                )
+            )
+            if lambdas_weights[k] != 0
+            else 0
+        )
+        mart_negative = mart_negative + summand_negative
+
+    if theta == 1:
+        return mart_positive
+    elif theta == 0:
+        return mart_negative
+    else:
+        return (
+            theta * mart_positive + (1 - theta) * mart_negative
+            if convex_comb
+            else np.maximum(theta * mart_positive, (1 - theta) * mart_negative)
+        )
 
 
 def cs_from_martingale(

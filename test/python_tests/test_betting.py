@@ -1,3 +1,4 @@
+from math import isnan
 import pytest
 import numpy as np
 from confseq.betting import *
@@ -77,8 +78,34 @@ def test_betting_mart_WoR(m):
     t = np.arange(1, len(x) + 1)
     mart_WoR = betting_mart(x, m=m, N=N)
 
+    # If logical_cs would reject, martingale should be inf
     assert all(mart_WoR[S_t / N > m] == math.inf)
     assert all(mart_WoR[1 - (t - S_t) / N < m] == math.inf)
+
+    N = 10000
+    x = np.random.beta(1, 1, N)
+    m = np.mean(x) + 0.1
+    D = 10
+    mart_WoR = diversified_betting_mart(
+        x,
+        m=m,
+        lambdas_fns_positive=[
+            lambda x, m, i=i: (i + 1) / (mu_t(x, m, N) * (D + 1)) for i in range(D)
+        ],
+        lambdas_fns_negative=[
+            lambda x, m, i=i: (i + 1) / ((1 - mu_t(x, m, N)) * (D + 1))
+            for i in range(D)
+        ],
+        alpha=None,
+        N=N,
+        trunc_scale=1,
+        lambdas_weights=np.append(1, np.repeat(0, 9))
+    )
+
+    # In a diversified betting mart with weights of 0 in a WoR setting under
+    # the alternative, we'd encounter 0 * inf quite a lot. Need to make sure
+    # that these situations are handled correctly (i.e. no nans result)
+    assert not any(np.isnan(mart_WoR))
 
 
 @pytest.mark.parametrize("m", [0.4, 0.5, 0.6])
@@ -156,9 +183,9 @@ def test_get_ci_seq():
     ci_fn = lambda x: betting_ci(x, alpha=0.05)
     times = [10, 50, 100]
     x = np.random.beta(1, 1, 100)
-    l_seq, u_seq = get_ci_seq(x, ci_fn=ci_fn, times = times)
-    
+    l_seq, u_seq = get_ci_seq(x, ci_fn=ci_fn, times=times)
+
     for i in range(len(times)):
-        l, u = ci_fn(x[0:times[i]])
-        assert(l_seq[i] == l)
-        assert(u_seq[i] == u)
+        l, u = ci_fn(x[0 : times[i]])
+        assert l_seq[i] == l
+        assert u_seq[i] == u
