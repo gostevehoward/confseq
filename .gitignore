@@ -1,7 +1,8 @@
 .vscode
 _skbuild
 
-# visual_tests output
+venv_confseq/
+
 test/visual_tests/*.pdf
 
 ### From GitHub's Python.gitignore https://github.com/github/gitignore/blob/master/Python.gitignore ###

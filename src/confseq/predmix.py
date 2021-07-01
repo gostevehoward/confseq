@@ -1,6 +1,7 @@
 import numpy as np
 from confseq.betting_strategies import lambda_predmix_eb
 
+
 def predmix_empbern_cs(
     x,
     alpha=0.05,
