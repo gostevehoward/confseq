@@ -2,6 +2,7 @@ import math
 import numpy as np
 from scipy.optimize import root
 
+
 def lambda_predmix_eb(
     x,
     truncation=math.inf,
@@ -106,7 +107,7 @@ def lambda_aKelly(
 
     return lambdas
 
-    
+
 def lambda_Kelly(x, m):
     lambdas_init = lambda_aKelly(x, m, trunc_scale=1)
     lambdas = np.repeat(0.0, len(x))
@@ -126,6 +127,7 @@ def lambda_Kelly(x, m):
     lambdas = lambdas
 
     return lambdas
+
 
 def lambda_LBOW(x, m):
     t = np.arange(1, len(x) + 1)
