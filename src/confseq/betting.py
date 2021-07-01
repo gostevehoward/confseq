@@ -97,8 +97,7 @@ def betting_mart(
 
     # if we want to truncate with m
     if m_trunc:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
+        with np.errstate(divide="ignore"):
             upper_trunc = trunc_scale / mu_t
             lower_trunc = trunc_scale / (1 - mu_t)
     else:
@@ -112,8 +111,20 @@ def betting_mart(
     lambdas_negative = np.maximum(-upper_trunc, lambdas_negative)
     lambdas_negative = np.minimum(lower_trunc, lambdas_negative)
 
-    capital_process_positive = np.cumprod(1 + lambdas_positive * (x - mu_t))
-    capital_process_negative = np.cumprod(1 - lambdas_negative * (x - mu_t))
+    with np.errstate(invalid="ignore"):
+        capital_process_positive = np.cumprod(1 + lambdas_positive * (x - mu_t))
+        capital_process_negative = np.cumprod(1 - lambdas_negative * (x - mu_t))
+
+    # For cases where lambdas_positive = math.inf and x - mu_t = 0, we run into
+    # inf * 0. This should be treated as -1 due to the limiting behaviour of
+    # 1/mu_t * (0 - mu_t) as mu_t -> 0. Therefore, the capital process goes to 0.
+    capital_process_positive[
+        np.logical_and(lambdas_positive == math.inf, x - mu_t == 0)
+    ] = 0
+    # Similar story holds for the negative case with 1-mu_t and x = 1.
+    capital_process_negative[
+        np.logical_and(lambdas_negative == math.inf, x - mu_t == 0)
+    ] = 0
 
     if theta == 1:
         capital_process = theta * capital_process_positive
@@ -149,11 +160,7 @@ def betting_mart(
     if any(capital_process < 0):
         assert all(capital_process >= 0)
 
-    if any(np.isnan(capital_process)):
-        warnings.warn("Martingale has nans")
-        where = np.where(np.isnan(capital_process))[0]
-
-        assert not any(np.isnan(capital_process))
+    assert not any(np.isnan(capital_process))
 
     return capital_process
 
