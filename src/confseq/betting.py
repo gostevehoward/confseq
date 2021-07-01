@@ -134,9 +134,10 @@ def betting_mart(
     if N is not None:
         # If S_t / N > m, then we know with certainty that the mean
         # is larger than m
-        capital_process[
-            np.logical_and(np.logical_or(mu_t <= 0, mu_t >= 1), S_t / N > m)
-        ] = math.inf
+        capital_process[np.logical_and(mu_t <= 0, S_t / N > m)] = math.inf
+        # Similarly, if (N - t + S_t) / N < m, then we know with certainty that the mean
+        # is smaller than m
+        capital_process[np.logical_and(mu_t >= 1, 1 - (t - S_t) / N < m)] = math.inf
     else:
         # If mu_t == 0 and we've observed at least one nonzero x, we can't be
         # under the null.
@@ -283,7 +284,8 @@ def diversified_betting_mart(
     trunc_scale=1 / 2,
     m_trunc=True,
 ):
-    mart = np.zeros(len(x))
+    mart_positive = np.zeros(len(x))
+    mart_negative = np.zeros(len(x))
 
     # Number of betting strategies to use
     K = len(lambdas_fns_positive)
@@ -299,19 +301,32 @@ def diversified_betting_mart(
     for k in range(K):
         lambdas_fn_positive = lambdas_fns_positive[k]
         lambdas_fn_negative = lambdas_fns_negative[k]
-        mart = mart + lambdas_weights[k] * betting_mart(
+        mart_positive = mart_positive + lambdas_weights[k] * betting_mart(
             x,
             m,
             alpha=alpha,
             lambdas_fn_positive=lambdas_fn_positive,
             lambdas_fn_negative=lambdas_fn_negative,
             N=N,
-            theta=theta,
+            theta=1,
             convex_comb=convex_comb,
             trunc_scale=trunc_scale,
             m_trunc=m_trunc,
         )
-    return mart
+        mart_negative = mart_negative + lambdas_weights[k] * betting_mart(
+            x,
+            m,
+            alpha=alpha,
+            lambdas_fn_positive=lambdas_fn_positive,
+            lambdas_fn_negative=lambdas_fn_negative,
+            N=N,
+            theta=0,
+            convex_comb=convex_comb,
+            trunc_scale=trunc_scale,
+            m_trunc=m_trunc,
+        )
+
+    return theta * mart_positive + (1 - theta) * mart_negative
 
 
 def cs_from_martingale(
