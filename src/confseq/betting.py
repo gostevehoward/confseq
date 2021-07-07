@@ -112,23 +112,24 @@ def betting_mart(
         lambdas_negative = np.maximum(lambdas_negative, -trunc_scale)
 
     with np.errstate(invalid="ignore"):
-        capital_process_positive = np.cumprod(1 + lambdas_positive * (x - mu_t))
-        capital_process_negative = np.cumprod(1 - lambdas_negative * (x - mu_t))
+        multiplicand_positive = 1 + lambdas_positive * (x - mu_t)
+        multiplicand_negative = 1 - lambdas_negative * (x - mu_t)
+
+    # Use convention that 0/0 = 1. We still have
+    # a martingale under the null
+    multiplicand_positive[
+        np.logical_and(lambdas_positive == math.inf, x - mu_t == 0)
+    ] = 1
+    multiplicand_negative[
+        np.logical_and(lambdas_negative == math.inf, x - mu_t == 0)
+    ] = 1
 
     # If mu_t < 0 or mu_t > 1, we cannot be under the null
-    capital_process_positive[np.logical_or(mu_t < 0, mu_t > 1)] = math.inf
-    capital_process_negative[np.logical_or(mu_t < 0, mu_t > 1)] = math.inf
+    multiplicand_positive[np.logical_or(mu_t < 0, mu_t > 1)] = math.inf
+    multiplicand_negative[np.logical_or(mu_t < 0, mu_t > 1)] = math.inf
 
-    # For cases where lambdas_positive = math.inf and x - mu_t = 0, we run into
-    # inf * 0. This should be treated as -1 due to the limiting behaviour of
-    # 1/mu_t * (0 - mu_t) as mu_t -> 0. Therefore, the capital process goes to 0.
-    capital_process_positive[
-        np.logical_and(lambdas_positive == math.inf, x - mu_t == 0)
-    ] = 0
-    # Similar story holds for the negative case with 1-mu_t and x = 1.
-    capital_process_negative[
-        np.logical_and(lambdas_negative == math.inf, x - mu_t == 0)
-    ] = 0
+    capital_process_positive = np.cumprod(multiplicand_positive)
+    capital_process_negative = np.cumprod(multiplicand_negative)
 
     if theta == 1:
         capital_process = theta * capital_process_positive
@@ -144,22 +145,6 @@ def betting_mart(
             capital_process = np.maximum(
                 theta * capital_process_positive, (1 - theta) * capital_process_negative
             )
-
-    # Need to deal with the case mu_t = 0, 1 separately.
-    if N is not None:
-        # If S_t / N > m, then we know with certainty that the mean
-        # is larger than m
-        capital_process[np.logical_and(mu_t <= 0, S_t / N > m)] = math.inf
-        # Similarly, if (N - t + S_t) / N < m, then we know with certainty that the mean
-        # is smaller than m
-        capital_process[np.logical_and(mu_t >= 1, 1 - (t - S_t) / N < m)] = math.inf
-    else:
-        # If mu_t == 0 and we've observed at least one nonzero x, we can't be
-        # under the null.
-        capital_process[np.logical_and(mu_t <= 0, np.count_nonzero(x) > 0)]
-        # Similarly, if mu_t == 1 and we've observed at least one non-one x,
-        # we can't be under the null.
-        capital_process[np.logical_and(mu_t >= 1, np.count_nonzero(x == 1) > 0)]
 
     assert all(capital_process >= 0)
 
@@ -354,15 +339,19 @@ def diversified_betting_mart(
         mart_negative = mart_negative + summand_negative
 
     if theta == 1:
-        return mart_positive
+        mart = mart_positive
     elif theta == 0:
-        return mart_negative
+        mart = mart_negative
     else:
-        return (
+        mart = (
             theta * mart_positive + (1 - theta) * mart_negative
             if convex_comb
             else np.maximum(theta * mart_positive, (1 - theta) * mart_negative)
         )
+
+    assert not any(np.isnan(mart))
+
+    return mart
 
 
 def cs_from_martingale(

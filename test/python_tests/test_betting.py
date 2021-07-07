@@ -70,42 +70,16 @@ def test_betting_mart_convex_comb(m):
     assert all(mart1 >= mart2)
 
 
-@pytest.mark.parametrize("m", [0.1, 0.4, 0.5, 0.6, 0.9])
-def test_betting_mart_WoR(m):
+def test_betting_mart_WoR():
     N = 1000
     x = np.random.binomial(1, 0.5, N)
-    S_t = np.cumsum(x)
-    t = np.arange(1, len(x) + 1)
-    mart_WoR = betting_mart(x, m=m, N=N)
+    alpha = 0.05
 
-    # If logical_cs would reject, martingale should be inf
-    assert all(mart_WoR[S_t / N > m] == math.inf)
-    assert all(mart_WoR[1 - (t - S_t) / N < m] == math.inf)
-
-    N = 10000
-    x = np.random.beta(1, 1, N)
-    m = np.mean(x) + 0.1
-    D = 10
-    mart_WoR = diversified_betting_mart(
-        x,
-        m=m,
-        lambdas_fns_positive=[
-            lambda x, m, i=i: (i + 1) / (mu_t(x, m, N) * (D + 1)) for i in range(D)
-        ],
-        lambdas_fns_negative=[
-            lambda x, m, i=i: (i + 1) / ((1 - mu_t(x, m, N)) * (D + 1))
-            for i in range(D)
-        ],
-        alpha=None,
-        N=N,
-        trunc_scale=1,
-        lambdas_weights=np.append(1, np.repeat(0, 9))
-    )
-
-    # In a diversified betting mart with weights of 0 in a WoR setting under
-    # the alternative, we'd encounter 0 * inf quite a lot. Need to make sure
-    # that these situations are handled correctly (i.e. no nans result)
-    assert not any(np.isnan(mart_WoR))
+    assert betting_mart(x, m=np.mean(x), N=N)[-1] < 1 / alpha
+    # Martingale should be large for all m_null not equal to m.
+    # This may fail with small probability
+    assert betting_mart(x, m=np.mean(x) + 0.01, N=N)[-1] > 1 / alpha
+    assert betting_mart(x, m=np.mean(x) - 0.01, N=N)[-1] > 1 / alpha
 
 
 @pytest.mark.parametrize("m", [0.4, 0.5, 0.6])
