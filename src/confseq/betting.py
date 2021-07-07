@@ -95,25 +95,41 @@ def betting_mart(
     lambdas_positive = lambdas_fn_positive(x, m)
     lambdas_negative = lambdas_fn_negative(x, m)
 
+    assert 0 < trunc_scale <= 1
     # if we want to truncate with m
     if m_trunc:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            upper_trunc = trunc_scale / mu_t
-            lower_trunc = trunc_scale / (1 - mu_t)
+        with np.errstate(divide="ignore"):
+            lambdas_positive = np.minimum(lambdas_positive, trunc_scale / mu_t)
+            lambdas_positive = np.maximum(lambdas_positive, -trunc_scale / (1 - mu_t))
+
+            lambdas_negative = np.minimum(lambdas_negative, trunc_scale / (1 - mu_t))
+            lambdas_negative = np.maximum(lambdas_negative, -trunc_scale / mu_t)
     else:
-        upper_trunc = trunc_scale
-        lower_trunc = trunc_scale
+        lambdas_positive = np.minimum(lambdas_positive, trunc_scale)
+        lambdas_positive = np.maximum(lambdas_positive, -trunc_scale)
 
-    # perform truncation
-    lambdas_positive = np.maximum(-lower_trunc, lambdas_positive)
-    lambdas_positive = np.minimum(upper_trunc, lambdas_positive)
+        lambdas_negative = np.minimum(lambdas_negative, trunc_scale)
+        lambdas_negative = np.maximum(lambdas_negative, -trunc_scale)
 
-    lambdas_negative = np.maximum(-upper_trunc, lambdas_negative)
-    lambdas_negative = np.minimum(lower_trunc, lambdas_negative)
+    with np.errstate(invalid="ignore"):
+        multiplicand_positive = 1 + lambdas_positive * (x - mu_t)
+        multiplicand_negative = 1 - lambdas_negative * (x - mu_t)
 
-    capital_process_positive = np.cumprod(1 + lambdas_positive * (x - mu_t))
-    capital_process_negative = np.cumprod(1 - lambdas_negative * (x - mu_t))
+    # Use convention that 0/0 = 1. We still have
+    # a martingale under the null
+    multiplicand_positive[
+        np.logical_and(lambdas_positive == math.inf, x - mu_t == 0)
+    ] = 1
+    multiplicand_negative[
+        np.logical_and(lambdas_negative == math.inf, x - mu_t == 0)
+    ] = 1
+
+    # If mu_t < 0 or mu_t > 1, we cannot be under the null
+    multiplicand_positive[np.logical_or(mu_t < 0, mu_t > 1)] = math.inf
+    multiplicand_negative[np.logical_or(mu_t < 0, mu_t > 1)] = math.inf
+
+    capital_process_positive = np.cumprod(multiplicand_positive)
+    capital_process_negative = np.cumprod(multiplicand_negative)
 
     if theta == 1:
         capital_process = theta * capital_process_positive
@@ -130,30 +146,9 @@ def betting_mart(
                 theta * capital_process_positive, (1 - theta) * capital_process_negative
             )
 
-    # Need to deal with the case mu_t = 0, 1 separately.
-    if N is not None:
-        # If S_t / N > m, then we know with certainty that the mean
-        # is larger than m
-        capital_process[np.logical_and(mu_t <= 0, S_t / N > m)] = math.inf
-        # Similarly, if (N - t + S_t) / N < m, then we know with certainty that the mean
-        # is smaller than m
-        capital_process[np.logical_and(mu_t >= 1, 1 - (t - S_t) / N < m)] = math.inf
-    else:
-        # If mu_t == 0 and we've observed at least one nonzero x, we can't be
-        # under the null.
-        capital_process[np.logical_and(mu_t <= 0, np.count_nonzero(x) > 0)]
-        # Similarly, if mu_t == 1 and we've observed at least one non-one x,
-        # we can't be under the null.
-        capital_process[np.logical_and(mu_t >= 1, np.count_nonzero(x == 1) > 0)]
+    assert all(capital_process >= 0)
 
-    if any(capital_process < 0):
-        assert all(capital_process >= 0)
-
-    if any(np.isnan(capital_process)):
-        warnings.warn("Martingale has nans")
-        where = np.where(np.isnan(capital_process))[0]
-
-        assert not any(np.isnan(capital_process))
+    assert not any(np.isnan(capital_process))
 
     return capital_process
 
@@ -301,32 +296,62 @@ def diversified_betting_mart(
     for k in range(K):
         lambdas_fn_positive = lambdas_fns_positive[k]
         lambdas_fn_negative = lambdas_fns_negative[k]
-        mart_positive = mart_positive + lambdas_weights[k] * betting_mart(
-            x,
-            m,
-            alpha=alpha,
-            lambdas_fn_positive=lambdas_fn_positive,
-            lambdas_fn_negative=lambdas_fn_negative,
-            N=N,
-            theta=1,
-            convex_comb=convex_comb,
-            trunc_scale=trunc_scale,
-            m_trunc=m_trunc,
-        )
-        mart_negative = mart_negative + lambdas_weights[k] * betting_mart(
-            x,
-            m,
-            alpha=alpha,
-            lambdas_fn_positive=lambdas_fn_positive,
-            lambdas_fn_negative=lambdas_fn_negative,
-            N=N,
-            theta=0,
-            convex_comb=convex_comb,
-            trunc_scale=trunc_scale,
-            m_trunc=m_trunc,
+
+        summand_positive = (
+            (
+                lambdas_weights[k]
+                * betting_mart(
+                    x,
+                    m,
+                    alpha=alpha,
+                    lambdas_fn_positive=lambdas_fn_positive,
+                    lambdas_fn_negative=lambdas_fn_negative,
+                    N=N,
+                    theta=1,
+                    trunc_scale=trunc_scale,
+                    m_trunc=m_trunc,
+                )
+            )
+            if lambdas_weights[k] != 0
+            else 0
         )
 
-    return theta * mart_positive + (1 - theta) * mart_negative
+        mart_positive = mart_positive + summand_positive
+
+        summand_negative = (
+            (
+                lambdas_weights[k]
+                * betting_mart(
+                    x,
+                    m,
+                    alpha=alpha,
+                    lambdas_fn_positive=lambdas_fn_positive,
+                    lambdas_fn_negative=lambdas_fn_negative,
+                    N=N,
+                    theta=0,
+                    trunc_scale=trunc_scale,
+                    m_trunc=m_trunc,
+                )
+            )
+            if lambdas_weights[k] != 0
+            else 0
+        )
+        mart_negative = mart_negative + summand_negative
+
+    if theta == 1:
+        mart = mart_positive
+    elif theta == 0:
+        mart = mart_negative
+    else:
+        mart = (
+            theta * mart_positive + (1 - theta) * mart_negative
+            if convex_comb
+            else np.maximum(theta * mart_positive, (1 - theta) * mart_negative)
+        )
+
+    assert not any(np.isnan(mart))
+
+    return mart
 
 
 def cs_from_martingale(
