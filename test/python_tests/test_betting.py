@@ -1,3 +1,4 @@
+from math import isnan
 import pytest
 import numpy as np
 from confseq.betting import *
@@ -69,16 +70,16 @@ def test_betting_mart_convex_comb(m):
     assert all(mart1 >= mart2)
 
 
-@pytest.mark.parametrize("m", [0.1, 0.4, 0.5, 0.6, 0.9])
-def test_betting_mart_WoR(m):
+def test_betting_mart_WoR():
     N = 1000
     x = np.random.binomial(1, 0.5, N)
-    S_t = np.cumsum(x)
-    t = np.arange(1, len(x) + 1)
-    mart_WoR = betting_mart(x, m=m, N=N)
+    alpha = 0.05
 
-    assert all(mart_WoR[S_t / N > m] == math.inf)
-    assert all(mart_WoR[1 - (t - S_t) / N < m] == math.inf)
+    assert betting_mart(x, m=np.mean(x), N=N)[-1] < 1 / alpha
+    # Martingale should be large for all m_null not equal to m.
+    # This may fail with small probability
+    assert betting_mart(x, m=np.mean(x) + 0.01, N=N)[-1] > 1 / alpha
+    assert betting_mart(x, m=np.mean(x) - 0.01, N=N)[-1] > 1 / alpha
 
 
 @pytest.mark.parametrize("m", [0.4, 0.5, 0.6])
@@ -92,7 +93,7 @@ def test_diversified_betting_mart(m):
         m=m,
         lambdas_fns_positive=[lambda x, m, i=i: (i + 1) / (K + 1) for i in range(K)],
         convex_comb=True,
-        trunc_scale=math.inf,
+        trunc_scale=1,
     )
     lambdas_matrix = np.tile(
         np.array([(i + 1) / (K + 1) for i in range(K)])[:, None], n
@@ -156,9 +157,9 @@ def test_get_ci_seq():
     ci_fn = lambda x: betting_ci(x, alpha=0.05)
     times = [10, 50, 100]
     x = np.random.beta(1, 1, 100)
-    l_seq, u_seq = get_ci_seq(x, ci_fn=ci_fn, times = times)
-    
+    l_seq, u_seq = get_ci_seq(x, ci_fn=ci_fn, times=times)
+
     for i in range(len(times)):
-        l, u = ci_fn(x[0:times[i]])
-        assert(l_seq[i] == l)
-        assert(u_seq[i] == u)
+        l, u = ci_fn(x[0 : times[i]])
+        assert l_seq[i] == l
+        assert u_seq[i] == u
