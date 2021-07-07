@@ -419,8 +419,8 @@ def cs_from_martingale(
     for j in np.arange(0, len(x)):
         where_in_cs = np.where(confseq_mtx[:, j])
         if len(where_in_cs[0]) == 0:
-            l[j] = np.nan
-            u[j] = np.nan
+            l[j] = 0
+            u[j] = 1
         else:
             l[j] = possible_m[where_in_cs[0][0]]
             u[j] = possible_m[where_in_cs[0][-1]]
