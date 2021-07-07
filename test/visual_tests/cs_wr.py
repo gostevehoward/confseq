@@ -4,7 +4,7 @@ The main goal here is just to make sure that the confidence sequences
 look reasonable. It is advisable to run these before pushing to GitHub.
 """
 
-from confseq.betting_plots import *
+from confseq.cs_plots import *
 from confseq.betting_strategies import *
 from confseq.betting import *
 from confseq.conjmix_bounded import conjmix_empbern_cs
@@ -16,14 +16,14 @@ n = 10000
 
 cs_list = [
     ConfseqToPlot(
-        lambda x: predmix_hoeffding_cs(x, alpha=alpha, running_intersection=True),
+        lambda x: predmix_hoeffding_cs(x, alpha=alpha, running_intersection=False),
         "PM-H",
         "tab:orange",
         "-.",
     ),
     ConfseqToPlot(
         lambda x: predmix_empbern_cs(
-            x, truncation=0.5, alpha=alpha, running_intersection=True
+            x, truncation=0.5, alpha=alpha, running_intersection=False
         ),
         "PM-EB",
         "tab:blue",
@@ -36,14 +36,14 @@ cs_list = [
             trunc_scale=1 / 2,
             alpha=alpha,
             parallel=True,
-            running_intersection=True,
+            running_intersection=False,
         ),
         r"Hedged",
         "tab:green",
         "-",
     ),
     ConfseqToPlot(
-        lambda x: conjmix_empbern_cs(x, v_opt=500 / 4, running_intersection=True),
+        lambda x: conjmix_empbern_cs(x, v_opt=500 / 4, running_intersection=False),
         r"CM-EB",
         "tab:red",
         ":",
