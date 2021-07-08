@@ -171,7 +171,7 @@ pytest -m "not random" --ignore=test/googletest-1.8.1/
 
 Howard, S. R., Waudby-Smith, I. and Ramdas, A. (2019-), ConfSeq: software for confidence
 sequences and uniform boundaries, https://github.com/gostevehoward/confseq
-[Online; accessed <current date>].
+[Online; accessed <today>].
 
 ```bibtex
 @Misc{,
