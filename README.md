@@ -3,23 +3,30 @@
 This library supports calculation of uniform boundaries, confidence sequences,
 and always-valid p-values. These constructs are useful in sequential A/B
 testing, best-arm identification, and other sequential statistical
-procedures. The library is written in C++ with Python and R interfaces. The main
-reference is
+procedures. The library is written in C++ and Python with a full Python interface and 
+partial R interface. The main references are
 
-Howard, S. R., Ramdas, A., McAuliffe, J., and Sekhon, J. (2018), [Uniform,
-nonparametric, non-asymptotic confidence
-sequences](https://arxiv.org/abs/1810.08240), preprint, arXiv:1810.08240.
+- Howard, S. R., Ramdas, A., McAuliffe, J., and Sekhon, J. (2021), [Time-uniform,
+nonparametric, nonasymptotic confidence 
+sequences](https://arxiv.org/abs/1810.08240), The Annals of Statistics, 49(2), 
+1055-1080.
 
-Additionally, the library includes some functions for quantile confidence
-sequences and A/B testing based on
-
-Howard, S. R. and Ramdas, A. (2019), [Sequential estimation of quantiles with
+- Howard, S. R. and Ramdas, A. (2021), [Sequential estimation of quantiles with
 applications to A/B-testing and best-arm
-identification](https://arxiv.org/abs/1906.09712), preprint, arXiv:1906.09712.
+identification](https://arxiv.org/abs/1906.09712), Bernoulli, to appear.
+
+- Waudby-Smith, I. and Ramdas, A. (2021), [Estimating means of bounded random
+variables by betting](https://arxiv.org/pdf/2010.09686.pdf), preprint,
+arXiv:2010.09686.
+
+- Waudby-Smith, I. and Ramdas, A. (2020), [Confidence sequences for sampling
+without replacement](https://arxiv.org/pdf/2006.04347.pdf), NeurIPS, 33.
 
 This library is in early-stage development and should not be considered
-stable. I have tested it only on Python 3.7.0 and R 3.6.1 on macOS Mojave. The
-implementation is in C++ and a compiler with C++14 support is required to build
+stable. Automated tests run on Python 3.7, 3.8, and 3.9 on the latest 
+stable Ubuntu. It has also been tested on Python 3.9 on macOS 11 (Big Sur).
+
+The C++ implementation requires a compiler with C++14 to build
 the package, as well as the Boost C++ headers.
 
 In the Python package, functions are split across modules by topic, as detailed
@@ -28,7 +35,7 @@ namespace.
 
 ## Installing the python package
 
-Run `pip3 install confseq` at the command line.
+Run `pip install confseq` at the command line.
 
 ## Installing the R package
 
@@ -119,7 +126,7 @@ well as one-sided tests, but these are not yet implemented.
 
 ## C++ library
 
-The underlying implementation is in a single-file, header-only C++ library in
+The main underlying implementation is in a single-file, header-only C++ library in
 `src/confseq/uniform_boundaries.h`. The top of the file defines a simplified
 interface mirroring the Python interface described above. Below that is an
 object-oriented interface useful for more involved work. The
@@ -127,21 +134,50 @@ object-oriented interface useful for more involved work. The
 [pybind11](https://github.com/pybind/pybind11). The R package uses
 [Rcpp](http://www.rcpp.org).
 
+## Additional python modules
+
+Some implementations (such as betting-based or without-replacement confidence
+sequences) are only available in Python at the moment. Specifically, these
+include the implementations of
+* `src/confseq/betting.py`
+* `src/confseq/betting_strategies.py`
+* `src/confseq/conjmix_bounded.py`, and
+* `src/confseq/cs_plots.py`.
+
+If you would like to help create an R interface for these methods,
+it would be appreciated!
+
 ## Unit tests
 
-Run `make -C /path/to/confseq/test runtests` to run the C++ unit tests.
+### C++
+
+```bash
+make -C /path/to/confseq/test runtests
+```
+
+### Python (with random tests)
+
+```bash 
+pytest --ignore=test/googletest-1.8.1/
+```
+
+### Python (without random tests)
+
+```bash
+pytest -m "not random" --ignore=test/googletest-1.8.1/
+```
 
 ## Citing this software
 
-Howard, S. R., and Ramdas, A. (2019-), ConfSeq: software for confidence
+Howard, S. R., Waudby-Smith, I. and Ramdas, A. (2019-), ConfSeq: software for confidence
 sequences and uniform boundaries, https://github.com/gostevehoward/confseq
-[Online; accessed 2019-08-08].
+[Online; accessed <current date>].
 
 ```bibtex
 @Misc{,
-  author = {Steven R. Howard and Aaditya Ramdas},
+  author = {Steven R. Howard, Ian Waudby-Smith, and Aaditya Ramdas},
   title = {{ConfSeq}: software for confidence sequences and uniform boundaries},
-  year = {2019--},
+  year = {2021--},
   url = "https://github.com/gostevehoward/confseq",
   note = {[Online; accessed <today>]}
 }
