@@ -7,6 +7,7 @@ from scipy.stats import binomtest
 from itertools import permutations
 
 
+@pytest.mark.random
 @pytest.mark.parametrize("theta", [0, 0.5, 1])
 def test_betting_mart_crossing_probabilities(theta):
     # Note that these tests are random and will each individually
@@ -32,6 +33,7 @@ def test_betting_mart_crossing_probabilities(theta):
         assert lower_ci <= alpha
 
 
+@pytest.mark.random
 def test_betting_mart_power():
     # Make sure theta=0,1 have one-sided power, while theta=1/2 has two-sided power
     theta = 1 / 2
@@ -63,13 +65,14 @@ def test_betting_mart_power():
 
 @pytest.mark.parametrize("m", [0.1, 0.4, 0.5, 0.6, 0.9])
 def test_betting_mart_convex_comb(m):
-    # Convex combination should be strictly larger than maximum always
+    # Convex combination should always be larger than maximum
     x = np.random.beta(1, 1, 10000)
     mart1 = betting_mart(x, m, theta=1 / 2, convex_comb=True)
     mart2 = betting_mart(x, m, theta=1 / 2, convex_comb=False)
     assert all(mart1 >= mart2)
 
 
+@pytest.mark.random
 def test_betting_mart_WoR():
     N = 1000
     x = np.random.binomial(1, 0.5, N)
