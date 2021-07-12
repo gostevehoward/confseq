@@ -8,3 +8,9 @@ requires = [
 ]
 
 build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+markers = [
+    "random: marks tests as random (deselect with '-m \"not random\"')"
+]
+
