@@ -115,7 +115,7 @@ def betting_mart(
         multiplicand_positive = 1 + lambdas_positive * (x - mu_t)
         multiplicand_negative = 1 - lambdas_negative * (x - mu_t)
 
-    # Use convention that 0/0 = 1. We still have
+    # Use convention that inf * 0 = 0. We still have
     # a martingale under the null
     multiplicand_positive[
         np.logical_and(lambdas_positive == math.inf, x - mu_t == 0)
@@ -123,14 +123,15 @@ def betting_mart(
     multiplicand_negative[
         np.logical_and(lambdas_negative == math.inf, x - mu_t == 0)
     ] = 1
+    
+    with np.errstate(invalid="ignore"):
+        capital_process_positive = np.cumprod(multiplicand_positive)
+        capital_process_negative = np.cumprod(multiplicand_negative)
 
-    # If mu_t < 0 or mu_t > 1, we cannot be under the null
-    multiplicand_positive[np.logical_or(mu_t < 0, mu_t > 1)] = math.inf
-    multiplicand_negative[np.logical_or(mu_t < 0, mu_t > 1)] = math.inf
-
-    capital_process_positive = np.cumprod(multiplicand_positive)
-    capital_process_negative = np.cumprod(multiplicand_negative)
-
+    # If we get nans from 0 * inf, this should be 0
+    capital_process_positive[np.isnan(capital_process_positive)] = 0
+    capital_process_negative[np.isnan(capital_process_negative)] = 0
+    
     if theta == 1:
         capital_process = theta * capital_process_positive
     elif theta == 0:
@@ -145,10 +146,13 @@ def betting_mart(
             capital_process = np.maximum(
                 theta * capital_process_positive, (1 - theta) * capital_process_negative
             )
+    
+    # If mu_t < 0 or mu_t > 1, we cannot be under the null
+    capital_process[np.logical_or(mu_t < 0, mu_t > 1)] = math.inf
+    
+    assert not any(np.isnan(capital_process))
 
     assert all(capital_process >= 0)
-
-    assert not any(np.isnan(capital_process))
 
     return capital_process
 
@@ -419,8 +423,8 @@ def cs_from_martingale(
     for j in np.arange(0, len(x)):
         where_in_cs = np.where(confseq_mtx[:, j])
         if len(where_in_cs[0]) == 0:
-            l[j] = np.nan
-            u[j] = np.nan
+            l[j] = 0
+            u[j] = 1
         else:
             l[j] = possible_m[where_in_cs[0][0]]
             u[j] = possible_m[where_in_cs[0][-1]]
