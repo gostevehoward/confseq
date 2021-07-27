@@ -10,6 +10,7 @@ from logging import info, warnings
 from confseq.predmix import lambda_predmix_eb
 
 
+
 def betting_mart(
     x,
     m,
@@ -123,7 +124,7 @@ def betting_mart(
     multiplicand_negative[
         np.logical_and(lambdas_negative == math.inf, x - mu_t == 0)
     ] = 1
-    
+
     with np.errstate(invalid="ignore"):
         capital_process_positive = np.cumprod(multiplicand_positive)
         capital_process_negative = np.cumprod(multiplicand_negative)
@@ -131,7 +132,7 @@ def betting_mart(
     # If we get nans from 0 * inf, this should be 0
     capital_process_positive[np.isnan(capital_process_positive)] = 0
     capital_process_negative[np.isnan(capital_process_negative)] = 0
-    
+
     if theta == 1:
         capital_process = theta * capital_process_positive
     elif theta == 0:
@@ -146,10 +147,10 @@ def betting_mart(
             capital_process = np.maximum(
                 theta * capital_process_positive, (1 - theta) * capital_process_negative
             )
-    
+
     # If mu_t < 0 or mu_t > 1, we cannot be under the null
     capital_process[np.logical_or(mu_t < 0, mu_t > 1)] = math.inf
-    
+
     assert not any(np.isnan(capital_process))
 
     assert all(capital_process >= 0)
@@ -437,11 +438,7 @@ def cs_from_martingale(
         l = np.maximum(l, logical_l)
         u = np.minimum(u, logical_u)
 
-    if running_intersection:
-        l = np.maximum.accumulate(l)
-        u = np.minimum.accumulate(u)
-
-    return l, u
+    return running_intersection(l, u) if running_intersection else l, u
 
 
 def hedged_cs(
@@ -726,6 +723,8 @@ def betting_ci(
     """
     x = np.array(x)
     n = len(x)
+
+    lambdas_fns_positive = lambda x, m: lambda_predmix_eb(x, alpha=alpha, fixed_n=n)
 
     l, u = betting_cs(
         x,

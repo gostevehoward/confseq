@@ -1,6 +1,10 @@
 import numpy as np
 
 
+def running_intersection(l, u):
+    return np.maximum.accumulate(l), np.minimum.accumulate(u)
+
+
 def superMG_crossing_fraction(mart_fn, dist_fn, alpha, repeats):
     exceeded = [None] * repeats
     for i in range(repeats):
