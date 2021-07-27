@@ -10,7 +10,6 @@ from logging import info
 from confseq.predmix import lambda_predmix_eb
 
 
-
 def betting_mart(
     x,
     m,
@@ -183,11 +182,11 @@ def betting_cs(
     alpha, real
         Significance level between 0 and 1.
 
-    lambdas_fn_postive, bivariate function or None
+    lambdas_fns_postive, list of bivariate functions or None
         Function of `x` and `m` which generates an array-like
         of bets with the same length as `x`.
 
-    lambdas_fn_negative=None, bivariate function or None
+    lambdas_fns_negative=None, list of bivariate functions or None
         Same as above but for the negative capital process.
         This will be set to lambdas_fn_positive if
         left as None.
