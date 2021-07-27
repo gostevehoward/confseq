@@ -5,7 +5,7 @@ from time import time
 from scipy.optimize import minimize, newton, root
 import multiprocess
 from copy import copy, deepcopy
-from logging import info, warnings
+from logging import info
 
 from confseq.predmix import lambda_predmix_eb
 
