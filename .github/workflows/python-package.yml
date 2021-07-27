@@ -29,7 +29,7 @@ jobs:
     - name: Install dependencies
       run: |
         # Install boost library to OS
-        sudo apt-get install libboost-all-dev
+        sudo apt-get update && apt-get install libboost-all-dev
         python -m pip install --upgrade pip
         python -m pip install flake8 pytest
     - name: Install confseq package
