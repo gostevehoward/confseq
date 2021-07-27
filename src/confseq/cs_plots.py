@@ -3,6 +3,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import os
 
+
 class ConfseqToPlot:
     """
     Confidence sequences to plot in the `plot_cs` function.
@@ -44,7 +45,7 @@ class ConfseqToPlot:
 class DataGeneratingProcess:
     """
     Data-generating process to use for `plot_cs`
-    
+
     Attributes
     ----------
     name, String
@@ -60,7 +61,7 @@ class DataGeneratingProcess:
         distribution (pmf) or continuous (pdf)? If sampling without
         replacement, leave as None, and the empirical distribution will
         be plotted.
-        
+
     dist_fn, univariate function or None
         Either the probability density function (pdf) or probability mass
         function (pmf) for the data. If sampling without replacement, leave
@@ -70,13 +71,13 @@ class DataGeneratingProcess:
         The mean of the with-replacement distribution. If sampling without
         replacement, leave as None since the mean can be determined from
         `data_generator_fn()`.
-    
+
     title, String or None
         Title to be used for this dgp in the plots. If left as None, `title`
         will be set to `name`. Importantly, `name` will be used for file output
         so it needs to be rather simple, but `title` can be complex (e.g.
         including LaTeX).
-    
+
     WoR, boolean
         Are the data being sampled without replacement from a finite population
         rather than with replacement from a superpopulation?
@@ -118,6 +119,8 @@ def plot_cs(
     include_density=True,
     include_legend=True,
     legend_outside_plot=False,
+    legend_columns=None,
+    bbox_to_anchor=(-0.75, -0.7),
 ):
 
     computation_time_dict = {}
@@ -241,10 +244,12 @@ def plot_cs(
     plt.tight_layout()
     if include_legend:
         if legend_outside_plot:
+            if legend_columns is None:
+                legend_columns = int(len(cs_list) / 2)
             axs[axs_cs_idx].legend(
                 loc="lower left",
-                bbox_to_anchor=(-0.75, -0.7),
-                ncol=int(len(cs_list) / 2),
+                bbox_to_anchor=bbox_to_anchor,
+                ncol=legend_columns,
             )
         else:
             axs[axs_width_idx].legend(loc="best")
@@ -293,6 +298,8 @@ def plot_CSs(
     include_density=True,
     legend_on_last_only=False,
     legend_outside_plot=False,
+    legend_columns=None,
+    bbox_to_anchor=(-0.75, -0.7),
 ):
     for dgp in dgp_list:
         if not legend_on_last_only or dgp_list[-1] == dgp:
@@ -313,6 +320,8 @@ def plot_CSs(
                 include_density=include_density,
                 include_legend=True,
                 legend_outside_plot=legend_outside_plot,
+                legend_columns=legend_columns,
+                bbox_to_anchor=bbox_to_anchor,
             )
         else:
             plot_cs(
@@ -332,4 +341,6 @@ def plot_CSs(
                 include_density=include_density,
                 include_legend=False,
                 legend_outside_plot=legend_outside_plot,
+                legend_columns=legend_columns,
+                bbox_to_anchor=bbox_to_anchor,
             )
