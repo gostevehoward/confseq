@@ -22,7 +22,7 @@ def predmix_upper_cs(
     x : Sequence[float]
         Observations in [0, 1]
     v : Sequence[float]
-        Variance increment (1 for Hoeffding, (x - \hat \mu_{t-1})^2 for empbern)
+        Variance increment (1 for Hoeffding, (x - muhat_{t-1})^2 for empbern)
     lambdas_fn : Callable[[Sequence[float]], Sequence[float]]
         Function to produce lambda values
     psi_fn : Callable[[Sequence[float]], Sequence[float]]
