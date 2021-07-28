@@ -167,7 +167,7 @@ def predmix_hoeffding_upper_cs(
 def predmix_hoeffding_cs(
     x: Sequence[float],
     alpha: float = 0.05,
-    truncation: float = 1 / 2,
+    truncation: float = 1,
     running_intersection: bool = False,
     N: Union[int, None] = None,
     fixed_n: Union[int, None] = None,
