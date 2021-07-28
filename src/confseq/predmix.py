@@ -148,7 +148,9 @@ def predmix_hoeffding_upper_cs(
     """
     t = np.arange(1, len(x) + 1)
     if fixed_n is not None:
-        lambdas_fn = lambda y: np.sqrt(8 * np.log(1 / alpha) / fixed_n)
+        lambdas_fn = lambda y: np.repeat(
+            np.sqrt(8 * np.log(1 / alpha) / fixed_n), len(x)
+        )
     else:
         lambdas_fn = lambda y: np.minimum(
             np.sqrt(8 * np.log(1 / alpha) / (t * np.log(1 + t))), truncation
@@ -264,3 +266,39 @@ def predmix_empbern_cs(
     )
 
     return l, u
+
+
+def predmix_hoeffding_ci(
+    x: Sequence[float],
+    alpha: float = 0.05,
+    N: Union[int, None] = None,
+    running_intersection: bool = True,
+):
+    l_cs, u_cs = predmix_hoeffding_cs(
+        x,
+        alpha=alpha,
+        truncation=math.inf,
+        running_intersection=running_intersection,
+        N=N,
+        fixed_n=len(x),
+    )
+
+    return l_cs[-1], u_cs[-1]
+
+
+def predmix_empbern_ci(
+    x: Sequence[float],
+    alpha: float = 0.05,
+    truncation: float = 1 / 2,
+    N: Union[int, None] = None,
+    running_intersection: bool = True,
+):
+    l_cs, u_cs = predmix_empbern_cs(
+        x,
+        alpha=alpha,
+        truncation=truncation,
+        N=N,
+        fixed_n=len(x),
+    )
+
+    return l_cs[-1], u_cs[-1]
