@@ -4,7 +4,7 @@ from confseq.boundaries import (
     gamma_exponential_mixture_bound,
     beta_binomial_log_mixture,
 )
-from confseq.misc import running_intersection
+from confseq.misc import get_running_intersection
 from confseq.betting import cs_from_martingale
 import math
 
@@ -49,7 +49,7 @@ def conjmix_hoeffding_cs(x, t_opt, alpha=0.05, running_intersection=False):
     l = np.maximum(l, 0)
     u = np.minimum(u, 1)
 
-    return running_intersection(l, u) if running_intersection else l, u
+    return get_running_intersection(l, u) if running_intersection else (l, u)
 
 
 def conjmix_empbern_cs(x, v_opt, alpha=0.05, running_intersection=False):
@@ -96,7 +96,7 @@ def conjmix_empbern_cs(x, v_opt, alpha=0.05, running_intersection=False):
     l = np.maximum(l, 0)
     u = np.minimum(u, 1)
 
-    return running_intersection(l, u) if running_intersection else l, u
+    return running_intersection(l, u) if running_intersection else (l, u)
 
 
 def bernoulli_supermartingale(x, m, alpha_opt, t_opt):
@@ -149,4 +149,4 @@ def conjmix_bernoulli_cs(
         x, mart_fn=superMG_fn, breaks=breaks, alpha=alpha, parallel=parallel
     )
 
-    return running_intersection(l, u) if running_intersection else l, u
+    return get_running_intersection(l, u) if running_intersection else (l, u)

@@ -6,6 +6,7 @@ from scipy.optimize import minimize, newton, root
 import multiprocess
 from copy import copy, deepcopy
 from logging import info
+from confseq.misc import get_running_intersection
 
 from confseq.predmix import lambda_predmix_eb
 
@@ -437,7 +438,7 @@ def cs_from_martingale(
         l = np.maximum(l, logical_l)
         u = np.minimum(u, logical_u)
 
-    return running_intersection(l, u) if running_intersection else l, u
+    return get_running_intersection(l, u) if running_intersection else (l, u)
 
 
 def hedged_cs(
@@ -723,7 +724,7 @@ def betting_ci(
     x = np.array(x)
     n = len(x)
 
-    lambdas_fns_positive = lambda x, m: lambda_predmix_eb(x, alpha=alpha, fixed_n=n)
+    lambdas_fns_positive = [lambda x, m: lambda_predmix_eb(x, alpha=alpha, fixed_n=n)]
 
     l, u = betting_cs(
         x,

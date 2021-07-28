@@ -2,7 +2,7 @@ import numpy as np
 from typing import Callable, Sequence, Tuple
 
 
-def running_intersection(
+def get_running_intersection(
     l: Sequence[float], u: Sequence[float]
 ) -> Tuple[Sequence[float], Sequence[float]]:
     return np.maximum.accumulate(l), np.minimum.accumulate(u)
