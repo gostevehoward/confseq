@@ -1,4 +1,11 @@
 import numpy as np
+from typing import Callable, Sequence, Tuple
+
+
+def get_running_intersection(
+    l: Sequence[float], u: Sequence[float]
+) -> Tuple[Sequence[float], Sequence[float]]:
+    return np.maximum.accumulate(l), np.minimum.accumulate(u)
 
 
 def superMG_crossing_fraction(mart_fn, dist_fn, alpha, repeats):
@@ -9,6 +16,15 @@ def superMG_crossing_fraction(mart_fn, dist_fn, alpha, repeats):
         exceeded[i] = True if any(mart > 1 / alpha) else False
 
     return np.mean(exceeded)
+
+
+def superMG_crossing_fraction(
+    mart_fn: Callable[[Sequence[float]], Sequence[float]],
+    dist_fn: Callable[[], Sequence[float]],
+    alpha: float,
+    repeats: int,
+) -> float:
+    return np.mean([any(mart_fn(dist_fn()) > 1 / alpha) for _ in range(repeats)])
 
 
 def expand_grid(a, b):
