@@ -2,7 +2,7 @@ import math
 from typing import Callable, Sequence, Tuple, Union
 import numpy as np
 from confseq.betting_strategies import lambda_predmix_eb
-from confseq.misc import get_running_intersection
+from confseq.misc import get_running_intersection, get_ci_seq
 
 
 def predmix_upper_cs(
@@ -286,6 +286,25 @@ def predmix_hoeffding_ci(
     return l_cs[-1], u_cs[-1]
 
 
+def predmix_hoeffding_ci_seq(
+    x: Sequence[float],
+    times: Sequence[int],
+    alpha: float = 0.05,
+    N: Union[int, None] = None,
+    running_intersection: bool = True,
+    parallel=False,
+):
+    def ci_fn(x):
+        return predmix_hoeffding_ci(
+            x,
+            alpha=alpha,
+            N=N,
+            running_intersection=running_intersection,
+        )
+
+    return get_ci_seq(x, ci_fn, times=times, parallel=parallel)
+
+
 def predmix_empbern_ci(
     x: Sequence[float],
     alpha: float = 0.05,
@@ -302,3 +321,24 @@ def predmix_empbern_ci(
     )
 
     return l_cs[-1], u_cs[-1]
+
+
+def predmix_empbern_ci_seq(
+    x: Sequence[float],
+    times: Sequence[int],
+    alpha: float = 0.05,
+    truncation: float = 1 / 2,
+    N: Union[int, None] = None,
+    running_intersection: bool = True,
+    parallel=False,
+):
+    def ci_fn(x):
+        return predmix_empbern_ci(
+            x,
+            alpha=alpha,
+            N=N,
+            running_intersection=running_intersection,
+            truncation=truncation,
+        )
+
+    return get_ci_seq(x, ci_fn, times=times, parallel=parallel)
