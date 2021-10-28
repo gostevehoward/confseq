@@ -96,7 +96,7 @@ def conjmix_empbern_cs(x, v_opt, alpha=0.05, running_intersection=False):
     l = np.maximum(l, 0)
     u = np.minimum(u, 1)
 
-    return running_intersection(l, u) if running_intersection else (l, u)
+    return get_running_intersection(l, u) if running_intersection else (l, u)
 
 
 def bernoulli_supermartingale(x, m, alpha_opt, t_opt):
