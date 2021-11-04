@@ -367,6 +367,7 @@ def cs_from_martingale(
     N=None,
     running_intersection=False,
     parallel=False,
+    log_scale=False,
 ):
     """
     Given a test supermartingale, produce a confidence sequence for
@@ -407,16 +408,21 @@ def cs_from_martingale(
     possible_m = np.arange(0, 1 + 1 / breaks, step=1 / breaks)
     confseq_mtx = np.zeros((len(possible_m), len(x)))
 
+    if log_scale:
+        threshold = np.log(1 / alpha)
+    else:
+        threshold = 1 / alpha
+
     if parallel:
         n_cores = multiprocess.cpu_count()
         info("Using " + str(n_cores) + " cores")
         with multiprocess.Pool(n_cores) as p:
             result = p.map(lambda m: mart_fn(x, m), possible_m)
-            confseq_mtx = np.vstack(result) <= 1 / alpha
+            confseq_mtx = np.vstack(result) <= threshold
     else:
         for i in np.arange(0, len(possible_m)):
             m = possible_m[i]
-            confseq_mtx[i, :] = mart_fn(x, m) <= 1 / alpha
+            confseq_mtx[i, :] = mart_fn(x, m) <= threshold
 
     l = np.zeros(len(x))
     u = np.ones(len(x))
@@ -742,7 +748,6 @@ def betting_ci(
     )
 
     return l[-1], u[-1]
-
 
 
 def betting_ci_seq(
