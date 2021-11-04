@@ -1,22 +1,14 @@
 import numpy as np
-from typing import Callable, Sequence, Tuple
+from numpy.typing import NDArray
+from typing import Callable, Tuple
 import multiprocess
 
 
 def get_running_intersection(
-    l: Sequence[float], u: Sequence[float]
-) -> Tuple[Sequence[float], Sequence[float]]:
+    l: NDArray[np.float_], u: NDArray[np.float_]
+) -> Tuple[NDArray[np.float_], NDArray[np.float_]]:
     return np.maximum.accumulate(l), np.minimum.accumulate(u)
 
-
-def superMG_crossing_fraction(mart_fn, dist_fn, alpha, repeats):
-    exceeded = [None] * repeats
-    for i in range(repeats):
-        x = dist_fn()
-        mart = mart_fn(x)
-        exceeded[i] = True if any(mart > 1 / alpha) else False
-
-    return np.mean(exceeded)
 
 def get_ci_seq(x, ci_fn, times, parallel=False):
     """
@@ -67,8 +59,8 @@ def get_ci_seq(x, ci_fn, times, parallel=False):
 
 
 def superMG_crossing_fraction(
-    mart_fn: Callable[[Sequence[float]], Sequence[float]],
-    dist_fn: Callable[[], Sequence[float]],
+    mart_fn: Callable[[NDArray[np.float_]], NDArray[np.float_]],
+    dist_fn: Callable[[], NDArray[np.float_]],
     alpha: float,
     repeats: int,
 ) -> float:
