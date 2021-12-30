@@ -29,7 +29,7 @@ jobs:
     - name: Install dependencies
       run: |
         # Install boost library to OS
-        sudo apt-get update
+        sudo apt-get update 
         sudo apt-get install libboost-all-dev
         python -m pip install --upgrade pip
         python -m pip install flake8 pytest
@@ -47,4 +47,4 @@ jobs:
         # Run c++ unit tests
         make -C test runtests
         # Run python unit tests, but ignore googletest library
-        pytest --ignore=test/googletest-1.8.1/
+        pytest -m "not random" --ignore=test/googletest-1.8.1/

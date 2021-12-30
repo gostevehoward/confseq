@@ -5,7 +5,8 @@ from time import time
 from scipy.optimize import minimize, newton, root
 import multiprocess
 from copy import copy, deepcopy
-from logging import info, warnings
+from logging import info
+from confseq.misc import get_running_intersection, get_ci_seq
 
 from confseq.predmix import lambda_predmix_eb
 
@@ -123,7 +124,7 @@ def betting_mart(
     multiplicand_negative[
         np.logical_and(lambdas_negative == math.inf, x - mu_t == 0)
     ] = 1
-    
+
     with np.errstate(invalid="ignore"):
         capital_process_positive = np.cumprod(multiplicand_positive)
         capital_process_negative = np.cumprod(multiplicand_negative)
@@ -131,7 +132,7 @@ def betting_mart(
     # If we get nans from 0 * inf, this should be 0
     capital_process_positive[np.isnan(capital_process_positive)] = 0
     capital_process_negative[np.isnan(capital_process_negative)] = 0
-    
+
     if theta == 1:
         capital_process = theta * capital_process_positive
     elif theta == 0:
@@ -146,10 +147,10 @@ def betting_mart(
             capital_process = np.maximum(
                 theta * capital_process_positive, (1 - theta) * capital_process_negative
             )
-    
+
     # If mu_t < 0 or mu_t > 1, we cannot be under the null
     capital_process[np.logical_or(mu_t < 0, mu_t > 1)] = math.inf
-    
+
     assert not any(np.isnan(capital_process))
 
     assert all(capital_process >= 0)
@@ -182,11 +183,11 @@ def betting_cs(
     alpha, real
         Significance level between 0 and 1.
 
-    lambdas_fn_postive, bivariate function or None
+    lambdas_fns_postive, list of bivariate functions or None
         Function of `x` and `m` which generates an array-like
         of bets with the same length as `x`.
 
-    lambdas_fn_negative=None, bivariate function or None
+    lambdas_fns_negative=None, list of bivariate functions or None
         Same as above but for the negative capital process.
         This will be set to lambdas_fn_positive if
         left as None.
@@ -366,6 +367,7 @@ def cs_from_martingale(
     N=None,
     running_intersection=False,
     parallel=False,
+    log_scale=False,
 ):
     """
     Given a test supermartingale, produce a confidence sequence for
@@ -406,16 +408,21 @@ def cs_from_martingale(
     possible_m = np.arange(0, 1 + 1 / breaks, step=1 / breaks)
     confseq_mtx = np.zeros((len(possible_m), len(x)))
 
+    if log_scale:
+        threshold = np.log(1 / alpha)
+    else:
+        threshold = 1 / alpha
+
     if parallel:
         n_cores = multiprocess.cpu_count()
         info("Using " + str(n_cores) + " cores")
         with multiprocess.Pool(n_cores) as p:
             result = p.map(lambda m: mart_fn(x, m), possible_m)
-            confseq_mtx = np.vstack(result) <= 1 / alpha
+            confseq_mtx = np.vstack(result) <= threshold
     else:
         for i in np.arange(0, len(possible_m)):
             m = possible_m[i]
-            confseq_mtx[i, :] = mart_fn(x, m) <= 1 / alpha
+            confseq_mtx[i, :] = mart_fn(x, m) <= threshold
 
     l = np.zeros(len(x))
     u = np.ones(len(x))
@@ -437,11 +444,7 @@ def cs_from_martingale(
         l = np.maximum(l, logical_l)
         u = np.minimum(u, logical_u)
 
-    if running_intersection:
-        l = np.maximum.accumulate(l)
-        u = np.minimum.accumulate(u)
-
-    return l, u
+    return get_running_intersection(l, u) if running_intersection else (l, u)
 
 
 def hedged_cs(
@@ -727,6 +730,8 @@ def betting_ci(
     x = np.array(x)
     n = len(x)
 
+    lambdas_fns_positive = [lambda x, m: lambda_predmix_eb(x, alpha=alpha, fixed_n=n)]
+
     l, u = betting_cs(
         x,
         alpha=alpha,
@@ -743,54 +748,6 @@ def betting_ci(
     )
 
     return l[-1], u[-1]
-
-
-def get_ci_seq(x, ci_fn, times, parallel=False):
-    """
-    Get sequence of confidence intervals
-
-    Parameters
-    ----------
-    x, array-like
-        The vector of observations between 0 and 1.
-
-    ci_fn, univariate function
-        A function which takes an array-like of bounded numbers `x`
-        and outputs a tuple `(l, u)` of lower and upper confidence
-        intervals. Note that `l` and `u` are scalars (not vectors).
-
-    times, array-like of positive integers
-        Times at which to compute the confidence interval.
-
-    parallel, boolean
-        Should this function be parallelized?
-
-    Returns
-    -------
-    l, array-like of [0, 1]-valued reals
-        Lower confidence intervals
-
-    u, array-like of [0, 1]-valued reals
-        Upper confidence intervals
-    """
-    x = np.array(x)
-
-    l = np.repeat(0.0, len(times))
-    u = np.repeat(1.0, len(times))
-
-    if parallel:
-        n_cores = multiprocess.cpu_count()
-        print("Using " + str(n_cores) + " cores")
-        with multiprocess.Pool(n_cores) as p:
-            result = np.array(p.map(lambda time: ci_fn(x[0:time]), times))
-        l, u = result[:, 0], result[:, 1]
-    else:
-        for i in np.arange(0, len(times)):
-            time = times[i]
-            x_t = x[0:time]
-            l[i], u[i] = ci_fn(x_t)
-
-    return l, u
 
 
 def betting_ci_seq(

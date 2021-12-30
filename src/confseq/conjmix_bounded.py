@@ -1,5 +1,12 @@
 import numpy as np
-from confseq.boundaries import normal_mixture_bound, gamma_exponential_mixture_bound
+from confseq.boundaries import (
+    normal_mixture_bound,
+    gamma_exponential_mixture_bound,
+    beta_binomial_log_mixture,
+)
+from confseq.misc import get_running_intersection
+from confseq.betting import cs_from_martingale
+import math
 
 
 def conjmix_hoeffding_cs(x, t_opt, alpha=0.05, running_intersection=False):
@@ -42,11 +49,7 @@ def conjmix_hoeffding_cs(x, t_opt, alpha=0.05, running_intersection=False):
     l = np.maximum(l, 0)
     u = np.minimum(u, 1)
 
-    if running_intersection:
-        l = np.maximum.accumulate(l)
-        u = np.minimum.accumulate(u)
-
-    return l, u
+    return get_running_intersection(l, u) if running_intersection else (l, u)
 
 
 def conjmix_empbern_cs(x, v_opt, alpha=0.05, running_intersection=False):
@@ -92,8 +95,58 @@ def conjmix_empbern_cs(x, v_opt, alpha=0.05, running_intersection=False):
     l, u = mu_hat_t - bdry, mu_hat_t + bdry
     l = np.maximum(l, 0)
     u = np.minimum(u, 1)
-    if running_intersection:
-        l = np.maximum.accumulate(l)
-        u = np.minimum.accumulate(u)
 
-    return l, u
+    return get_running_intersection(l, u) if running_intersection else (l, u)
+
+
+def bernoulli_supermartingale(x, m, alpha_opt, t_opt):
+    x = np.array(x)
+    n = len(x)
+    t = np.arange(1, n + 1)
+    S_t = np.cumsum(x - m)
+
+    var = m * (1 - m)
+    V_t = var * t
+
+    # If the null is m = 0, then as soon as we observe
+    # one x > 0, we know that the process cannot be a supermg.
+    if m == 0:
+        supermg = np.ones(n)
+        supermg[S_t > 0] = math.inf
+    # If the null is m = 1, then as soon as we observe
+    # one x < 1, we know that the process cannot be a supermg.
+    elif m == 1:
+        supermg = np.ones(n)
+        supermg[n - S_t < 1] = math.inf
+    else:
+        log_supermg = beta_binomial_log_mixture(
+            s=S_t,
+            v=V_t,
+            v_opt=var * t_opt,
+            g=m,
+            h=1 - m,
+            alpha_opt=alpha_opt,
+            is_one_sided=False,
+        )
+        with np.errstate(over="ignore"):
+            supermg = np.exp(log_supermg)
+
+    return supermg
+
+
+def conjmix_bernoulli_cs(
+    x, t_opt, alpha=0.05, breaks=1000, running_intersection=False, parallel=False
+):
+    x = np.array(x)
+
+    superMG_fn = (
+        lambda x, m: bernoulli_supermartingale(x, m, alpha_opt=alpha / 2, t_opt=t_opt)
+        / 2
+        + bernoulli_supermartingale(1 - x, 1 - m, alpha_opt=alpha / 2, t_opt=t_opt) / 2
+    )
+
+    l, u = cs_from_martingale(
+        x, mart_fn=superMG_fn, breaks=breaks, alpha=alpha, parallel=parallel
+    )
+
+    return get_running_intersection(l, u) if running_intersection else (l, u)
