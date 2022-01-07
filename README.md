@@ -24,7 +24,7 @@ without replacement](https://arxiv.org/pdf/2006.04347.pdf), NeurIPS, 33.
 
 This library is in early-stage development and should not be considered
 stable. Automated tests run on Python 3.7, 3.8, and 3.9 on the latest 
-stable Ubuntu. It has also been tested on Python 3.9 on macOS 11 (Big Sur).
+Ubuntu and macOS.
 
 The C++ implementation requires a compiler with C++14 to build
 the package, as well as the Boost C++ headers.
