@@ -23,7 +23,7 @@ arXiv:2010.09686.
 without replacement](https://arxiv.org/pdf/2006.04347.pdf), NeurIPS, 33.
 
 This library is in early-stage development and should not be considered
-stable. Automated tests run on Python 3.7, 3.8, and 3.9 on the latest 
+stable. Automated tests run on Python 3.7, 3.8, 3.9 and 3.10 on the latest 
 Ubuntu and macOS.
 
 The C++ implementation requires a compiler with C++14 to build
