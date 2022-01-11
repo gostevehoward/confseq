@@ -35,7 +35,7 @@ jobs:
           brew install boost
         fi
         python -m pip install --upgrade pip
-        python -m pip install flake8 pytest
+        python -m pip install flake8 pytest build
     - name: Install confseq package
       run: |
         pip install ./
@@ -53,9 +53,9 @@ jobs:
         pytest -m "not random" --ignore=test/googletest-1.8.1/
     - name: Build and upload wheels
       run: |
-        pip wheel --no-deps ./
+        python -m build
     
     - uses: actions/upload-artifact@v2
       with:
-        name: confseq_wheels
-        path: ./confseq-*.whl
+        name: confseq_dist
+        path: ./dist/confseq-*
