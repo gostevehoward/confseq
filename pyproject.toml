@@ -13,4 +13,3 @@ build-backend = "setuptools.build_meta"
 markers = [
     "random: marks tests as random (deselect with '-m \"not random\"')"
 ]
-
