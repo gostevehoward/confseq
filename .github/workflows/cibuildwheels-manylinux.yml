@@ -23,8 +23,17 @@ jobs:
           CIBW_BEFORE_ALL_LINUX: "yum install -y boost boost-thread boost-devel && python -m pip install --upgrade pip"
           CIBW_ARCHS_LINUX: "auto64"
           CIBW_SKIP: "*-musllinux_* cp36-*"
+### At the moment, CIBW_TEST seems to not work (the gh-action just hangs with no output at all). Keeping this here
+### in case we figure it out later.
+#          # Install pytest before running CIBW_TEST_COMMAND
+#           CIBW_TEST_REQUIRES: pytest
+#           CIBW_TEST_COMMAND: >
+#             # Run c++ unit tests
+#             make -C test runtests
+#             # Run python unit tests, but ignore googletest library
+#             pytest -m "not random" --ignore=test/googletest-1.8.1/
 
       - uses: actions/upload-artifact@v2
         with:
-          name: confseq_manylinux_wheels
+          name: confseq_wheels
           path: ./wheelhouse/*.whl
