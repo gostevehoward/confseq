@@ -25,6 +25,7 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
+        
     - name: Install dependencies
       run: |
         # Install boost library to OS
@@ -36,21 +37,25 @@ jobs:
         fi
         python -m pip install --upgrade pip
         python -m pip install flake8 pytest
+        
     - name: Install confseq package
       run: |
         pip install ./
+        
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude test/googletest-*
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --exclude test/googletest-*
+        
     - name: Run unit tests
       run: |
         # Run c++ unit tests
         make -C test runtests
         # Run python unit tests, but ignore googletest library
         pytest -m "not random" --ignore=test/googletest-1.8.1/
+        
     - name: Build and upload wheels
       run: |
         pip wheel --no-deps ./
@@ -59,3 +64,10 @@ jobs:
       with:
         name: confseq_wheels
         path: ./confseq-*.whl
+  
+    - name: Publish package
+      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags') && github.repository_owner == 'gostevehoward'
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        user: __token__
+        password: ${{ secrets.PYPI_API_TOKEN }}
