@@ -35,5 +35,5 @@ jobs:
 
       - uses: actions/upload-artifact@v2
         with:
-          name: confseq_wheels
+          name: confseq_manylinux_wheels
           path: ./wheelhouse/*.whl
