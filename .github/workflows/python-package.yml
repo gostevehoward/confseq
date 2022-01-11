@@ -1,4 +1,4 @@
-# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# This workflow will install boost dependencies, lint, run unit tests, and build wheels with a variety of OS/Python configurations.
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
 
 name: Python package
@@ -8,17 +8,16 @@ on:
     branches: [ master ]
   pull_request:
     branches: [ master ]
-  pull_request_target:
-    branches: [ master ]
 
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.7, 3.8, 3.9]
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.7", "3.8", "3.9", "3.10"]
 
     steps:
     - uses: actions/checkout@v2
@@ -29,13 +28,17 @@ jobs:
     - name: Install dependencies
       run: |
         # Install boost library to OS
-        sudo apt-get update
-        sudo apt-get install libboost-all-dev
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          sudo apt-get update 
+          sudo apt-get install -y libboost-all-dev
+        elif [ "$RUNNER_OS" == "macOS" ]; then
+          brew install boost
+        fi
         python -m pip install --upgrade pip
         python -m pip install flake8 pytest
     - name: Install confseq package
       run: |
-        pip install -e ./
+        pip install ./
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
@@ -48,3 +51,11 @@ jobs:
         make -C test runtests
         # Run python unit tests, but ignore googletest library
         pytest -m "not random" --ignore=test/googletest-1.8.1/
+    - name: Build and upload wheels
+      run: |
+        pip wheel --no-deps ./
+    
+    - uses: actions/upload-artifact@v2
+      with:
+        name: confseq_wheels
+        path: ./confseq-*.whl
