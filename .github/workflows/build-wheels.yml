@@ -80,7 +80,7 @@ jobs:
   
   publish:
     name: Publish Python distributions to PyPI and TestPyPI
-    needs: [build_manylinux_wheels, build_macos_wheels]
+    needs: [build_sdist, build_manylinux_wheels, build_macos_wheels]
     runs-on: ubuntu-latest
 
     steps:
