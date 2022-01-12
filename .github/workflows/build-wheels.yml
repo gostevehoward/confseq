@@ -7,6 +7,25 @@ on:
     types: [ prereleased, released ]
 
 jobs:
+  build_sdist:
+    name: Build source distribution
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0  # Optional, use if you use setuptools_scm
+        submodules: true  # Optional, use if you have submodules
+
+    - name: Build SDist
+      run: |
+        pip install --upgrade build
+        python -m build -s ./
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: confseq_sdist
+        path: dist/confseq-*.tar.gz
+        
   build_manylinux_wheels:
     name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -38,45 +57,45 @@ jobs:
           name: confseq_manylinux_wheels
           path: ./wheelhouse/*.whl
           
-  build_macos_dist:
+  build_macos_wheels:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
       matrix:
-        os: [macos-latest]
-        python-version: ["3.7", "3.8", "3.9", "3.10"]
+        os: [macos-11]
 
     steps:
     - uses: actions/checkout@v2
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
-        
-    - name: Install boost dependency
-      run: |
-        brew install boost
-    
-    - name: Build and upload macOS wheels
-      run: | 
-        python -m pip install build
-        python -m build
+    - name: Build wheels
+      uses: pypa/cibuildwheel@v2.3.1
+      env:
+        CIBW_BEFORE_ALL_MACOS: "brew install boost && python -m pip install --upgrade pip"
+        # Build universal (i.e. x86+ARM-compatible) wheels for CPython 3.8--. 
+        # Build specific wheels for 3.7 and PyPy.
+        CIBW_ARCHS_MACOS: "x86_64 universal2"
+        CIBW_BUILD: "*-macosx_universal2 pp37-macosx_x86_64 pp38-macosx_x86_64 cp37-macosx_x86_64"
+        CIBW_SKIP: "cp36-*"
         
     - uses: actions/upload-artifact@v2
       with:
-        name: confseq_macos_dist
-        path: ./dist/confseq-*
-        
+        name: confseq_macos_wheels
+        path: ./wheelhouse/*.whl
+  
   publish:
     name: Publish Python distributions to PyPI and TestPyPI
-    needs: [build_manylinux_wheels, build_macos_dist]
+    needs: [build_sdist, build_manylinux_wheels, build_macos_wheels]
     runs-on: ubuntu-latest
 
     steps:
-    - name: Download confseq_macos_dist artifact
+    - name: Download confseq_sdist artifact
       uses: actions/download-artifact@v2
       with:
-        name: confseq_macos_dist
+        name: confseq_sdist
+        path: dist
+    - name: Download confseq_macos_wheels artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: confseq_macos_wheels
         path: dist
     - name: Download confsesq_manylinux_wheels artifact
       uses: actions/download-artifact@v2
