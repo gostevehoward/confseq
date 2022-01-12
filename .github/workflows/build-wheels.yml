@@ -1,0 +1,96 @@
+name: Build and publish wheels
+
+on:
+  pull_request:
+    branches: [ master ]
+  release:
+    types: [ prereleased, released ]
+
+jobs:
+  build_manylinux_wheels:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.3.1
+        env:
+          CIBW_BEFORE_ALL_LINUX: "yum install -y boost boost-thread boost-devel && python -m pip install --upgrade pip"
+          CIBW_ARCHS_LINUX: "auto64"
+          CIBW_SKIP: "*-musllinux_* cp36-*"
+### At the moment, CIBW_TEST seems to not work (the gh-action just hangs with no output at all). Keeping this here
+### in case we figure it out later.
+#          # Install pytest before running CIBW_TEST_COMMAND
+#           CIBW_TEST_REQUIRES: pytest
+#           CIBW_TEST_COMMAND: >
+#             # Run c++ unit tests
+#             make -C test runtests
+#             # Run python unit tests, but ignore googletest library
+#             pytest -m "not random" --ignore=test/googletest-1.8.1/
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: confseq_manylinux_wheels
+          path: ./wheelhouse/*.whl
+          
+  build_macos_dist:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [macos-latest]
+        python-version: ["3.7", "3.8", "3.9", "3.10"]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+        
+    - name: Install boost dependency
+      run: |
+        brew install boost
+    
+    - name: Build and upload macOS wheels
+      run: | 
+        python -m pip install build
+        python -m build
+        
+    - uses: actions/upload-artifact@v2
+      with:
+        name: confseq_macos_dist
+        path: ./dist/confseq-*
+        
+  publish:
+    name: Publish Python distributions to PyPI and TestPyPI
+    needs: [build_manylinux_wheels, build_macos_dist]
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Download confseq_macos_dist artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: confseq_macos_dist
+        path: dist
+    - name: Download confsesq_manylinux_wheels artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: confseq_manylinux_wheels
+        path: dist
+    - name: Publish distribution to Test PyPI
+      if: github.event_name == 'release' && github.event.action == 'prereleased'
+      uses: pypa/gh-action-pypi-publish@master
+      with:
+        password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+        repository_url: https://test.pypi.org/legacy/
+    - name: Publish distribution to PyPI
+      if: github.event_name == 'release' && github.event.action == 'released' && github.repository_owner == 'gostevehoward'
+      uses: pypa/gh-action-pypi-publish@master
+      with:
+        password: ${{ secrets.PYPI_API_TOKEN }}
