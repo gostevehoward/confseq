@@ -79,11 +79,22 @@ def betting_mart(
         The martingale that results from the observed x
     """
 
+    assert 0 <= theta <= 1
+
+    if theta < 1 and not all(x >= 0):
+        raise ValueError("Cannot use theta < 1 with data that is not lower-bounded.")
+    elif theta > 0 and not all(x <= 1):
+        raise ValueError("Cannot use theta > 1 with data that is not upper-bounded.")
+    else:
+        assert all(x >= 0) and all(x <= 1)
+
     if lambdas_fn_positive is None:
-        lambdas_fn_positive = lambda x, m: lambda_predmix_eb(x, alpha=alpha)
+        lambdas_fn_positive = lambda x, m: lambda_predmix_eb(x, alpha=alpha * theta)
 
     if lambdas_fn_negative is None:
-        lambdas_fn_negative = lambdas_fn_positive
+        lambdas_fn_negative = lambda x, m: lambda_predmix_eb(
+            x, alpha=alpha * (1 - theta)
+        )
 
     if N is not None:
         t = np.arange(1, len(x) + 1)
@@ -506,13 +517,21 @@ def hedged_cs(
         lambdas_fns_positive=[
             lambda x, m: lambda_predmix_eb(
                 x,
-                alpha=alpha,
+                alpha=alpha * theta,
                 prior_mean=prior_mean,
                 prior_variance=prior_variance,
                 fake_obs=fake_obs,
             )
         ],
-        lambdas_fns_negative=[lambda_predmix_eb],
+        lambdas_fns_negative=[
+            lambda x, m: lambda_predmix_eb(
+                x,
+                alpha=alpha * (1 - theta),
+                prior_mean=prior_mean,
+                prior_variance=prior_variance,
+                fake_obs=fake_obs,
+            )
+        ],
         alpha=alpha,
         N=N,
         breaks=breaks,
@@ -730,7 +749,12 @@ def betting_ci(
     x = np.array(x)
     n = len(x)
 
-    lambdas_fns_positive = [lambda x, m: lambda_predmix_eb(x, alpha=alpha, fixed_n=n)]
+    lambdas_fns_positive = [
+        lambda x, m: lambda_predmix_eb(x, alpha=alpha * theta, fixed_n=n)
+    ]
+    lambdas_fns_negative = [
+        lambda x, m: lambda_predmix_eb(x, alpha=alpha * (1 - theta), fixed_n=n)
+    ]
 
     l, u = betting_cs(
         x,
