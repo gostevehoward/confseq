@@ -8,6 +8,7 @@ from confseq.misc import get_running_intersection
 from confseq.betting import cs_from_martingale
 import math
 from confseq.types import RealArray
+import warnings
 
 
 def conjmix_hoeffding_twosided_cs(
@@ -19,7 +20,7 @@ def conjmix_hoeffding_twosided_cs(
     Parameters
     ----------
     x, array-like of reals
-        The observed data
+        The observed data in [0, 1]
 
     t_opt, positive real
         Time at which to optimize the confidence sequence
@@ -75,7 +76,7 @@ def conjmix_empbern_lower_cs(
     Parameters
     ----------
     x, array-like of reals
-        The observed data
+        The observed data >= 0
 
     v_opt, positive real
         Intrinsic time at which to optimize the confidence sequence.
@@ -111,7 +112,7 @@ def conjmix_empbern_lower_cs(
     return np.maximum.accumulate(lower_cs) if running_intersection else lower_cs
 
 
-def conjmix_empbern_cs(
+def conjmix_empbern_twosided_cs(
     x: RealArray, v_opt: float, alpha: float = 0.05, running_intersection: bool = False
 ):
     """
@@ -120,7 +121,7 @@ def conjmix_empbern_cs(
     Parameters
     ----------
     x, array-like of reals
-        The observed data
+        The observed data in [0, 1]
 
     v_opt, positive real
         Intrinsic time at which to optimize the confidence sequence.
@@ -147,6 +148,10 @@ def conjmix_empbern_cs(
         x=1 - x, v_opt=v_opt, alpha=alpha/2, running_intersection=running_intersection
     )
 
+def conjmix_empbern_cs(
+    x: RealArray, v_opt: float, alpha: float = 0.05, running_intersection: bool = False):
+    warnings.warn("conjmix_empbern_cs is deprecated. Please use conjmix_empbern_twosided_cs instead.", DeprecationWarning)
+    return conjmix_empbern_twosided_cs(x,v_opt,alpha,running_intersection)
 
 def bernoulli_supermartingale(x, m, alpha_opt, t_opt):
     x = np.array(x)
