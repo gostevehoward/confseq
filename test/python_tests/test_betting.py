@@ -166,3 +166,33 @@ def test_get_ci_seq():
         l, u = ci_fn(x[0 : times[i]])
         assert l_seq[i] == l
         assert u_seq[i] == u
+
+
+def test_onesided_cs():
+    # Ensure that the two-sided CS recovers the lower CS with appropriate alpha.
+
+    n = 10000
+    x = np.random.beta(1, 1, n)
+    alpha = 0.5
+    theta = 1 / 2
+
+    lower_twosided, upper_twosided = betting_twosided_cs(
+        x,
+        alpha=alpha,
+        running_intersection=False,
+        theta=theta,
+        convex_comb=False,
+    )
+
+    lower_onesided = betting_lower_cs(
+        x,
+        alpha=theta * alpha,
+        running_intersection=False,
+    )
+
+    upper_onesided = 1 - betting_lower_cs(
+        1 - x, alpha=(1 - theta) * alpha, running_intersection=False
+    )
+
+    assert all(np.isclose(lower_twosided, lower_onesided).astype(bool))
+    assert all(np.isclose(upper_twosided, upper_onesided).astype(bool))

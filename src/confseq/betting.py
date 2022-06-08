@@ -30,7 +30,7 @@ def betting_mart(
     Parameters
     ----------
     x, array-like
-        The vector of observations between 0 and 1.
+        The vector of observations.
 
     m, real
         Null value for the mean of x
@@ -104,50 +104,64 @@ def betting_mart(
     else:
         mu_t = np.repeat(m, len(x))
 
-    lambdas_positive = lambdas_fn_positive(x, m)
-    lambdas_negative = lambdas_fn_negative(x, m)
-
     assert 0 < trunc_scale <= 1
-    # if we want to truncate with m
-    if m_trunc:
-        with np.errstate(divide="ignore"):
-            lambdas_positive = np.minimum(lambdas_positive, trunc_scale / mu_t)
-            lambdas_positive = np.maximum(lambdas_positive, -trunc_scale / (1 - mu_t))
 
-            lambdas_negative = np.minimum(lambdas_negative, trunc_scale / (1 - mu_t))
-            lambdas_negative = np.maximum(lambdas_negative, -trunc_scale / mu_t)
+    if theta > 0:
+        lambdas_positive = lambdas_fn_positive(x, m)
+        # if we want to truncate with m
+        if m_trunc:
+            with np.errstate(divide="ignore"):
+                lambdas_positive = np.minimum(lambdas_positive, trunc_scale / mu_t)
+                lambdas_positive = np.maximum(lambdas_positive, -trunc_scale / (1 - mu_t))
+        else:
+            lambdas_positive = np.minimum(lambdas_positive, trunc_scale)
+            lambdas_positive = np.maximum(lambdas_positive, -trunc_scale)
+
+        with np.errstate(invalid="ignore"):
+            multiplicand_positive = 1 + lambdas_positive * (x - mu_t)
+
+        # Use convention that inf * 0 = 0. We still have
+        # a martingale under the null
+        multiplicand_positive[
+            np.logical_and(lambdas_positive == math.inf, x - mu_t == 0)
+        ] = 1
+
+        with np.errstate(invalid="ignore"):
+            capital_process_positive = np.cumprod(multiplicand_positive)
+
+        # If we get nans from 0 * inf, this should be 0
+        capital_process_positive[np.isnan(capital_process_positive)] = 0
     else:
-        lambdas_positive = np.minimum(lambdas_positive, trunc_scale)
-        lambdas_positive = np.maximum(lambdas_positive, -trunc_scale)
+        capital_process_positive = np.repeat(0, len(x))
 
-        lambdas_negative = np.minimum(lambdas_negative, trunc_scale)
-        lambdas_negative = np.maximum(lambdas_negative, -trunc_scale)
+    if theta < 1:
+        lambdas_negative = lambdas_fn_negative(x, m)
+        if m_trunc:
+            with np.errstate(divide="ignore"):
+                lambdas_negative = np.minimum(lambdas_negative, trunc_scale / (1 - mu_t))
+                lambdas_negative = np.maximum(lambdas_negative, -trunc_scale / mu_t)
+        else:
+            lambdas_negative = np.minimum(lambdas_negative, trunc_scale)
+            lambdas_negative = np.maximum(lambdas_negative, -trunc_scale)
 
-    with np.errstate(invalid="ignore"):
-        multiplicand_positive = 1 + lambdas_positive * (x - mu_t)
-        multiplicand_negative = 1 - lambdas_negative * (x - mu_t)
+        with np.errstate(invalid="ignore"):
+            multiplicand_negative = 1 - lambdas_negative * (x - mu_t)
 
-    # Use convention that inf * 0 = 0. We still have
-    # a martingale under the null
-    multiplicand_positive[
-        np.logical_and(lambdas_positive == math.inf, x - mu_t == 0)
-    ] = 1
-    multiplicand_negative[
-        np.logical_and(lambdas_negative == math.inf, x - mu_t == 0)
-    ] = 1
+        multiplicand_negative[
+            np.logical_and(lambdas_negative == math.inf, x - mu_t == 0)
+        ] = 1
 
-    with np.errstate(invalid="ignore"):
-        capital_process_positive = np.cumprod(multiplicand_positive)
-        capital_process_negative = np.cumprod(multiplicand_negative)
+        with np.errstate(invalid="ignore"):
+            capital_process_negative = np.cumprod(multiplicand_negative)
 
-    # If we get nans from 0 * inf, this should be 0
-    capital_process_positive[np.isnan(capital_process_positive)] = 0
-    capital_process_negative[np.isnan(capital_process_negative)] = 0
+        capital_process_negative[np.isnan(capital_process_negative)] = 0
+    else:
+        capital_process_negative = np.repeat(0, len(x))
 
     if theta == 1:
-        capital_process = theta * capital_process_positive
+        capital_process = capital_process_positive
     elif theta == 0:
-        capital_process = (1 - theta) * capital_process_negative
+        capital_process = capital_process_negative
     else:
         if convex_comb:
             capital_process = (
@@ -169,7 +183,7 @@ def betting_mart(
     return capital_process
 
 
-def betting_cs(
+def betting_twosided_cs(
     x,
     lambdas_fns_positive=None,
     lambdas_fns_negative=None,
@@ -246,9 +260,14 @@ def betting_cs(
     u, array-like
         Upper confidence sequence for the mean
     """
-    if lambdas_fns_negative is None:
-        lambdas_fns_negative = lambdas_fns_positive
 
+    if lambdas_fns_positive is None:
+        lambdas_fns_positive = lambda x, m: lambda_predmix_eb(x, alpha=alpha * theta)
+    
+    if lambdas_fns_negative is None:
+        lambdas_fns_negative = lambda x, m: lambda_predmix_eb(x, alpha=alpha * (1-theta))
+
+    # If only passed a single function, put it into a list
     if np.shape(lambdas_fns_positive) == ():
         lambdas_fns_positive = [lambdas_fns_positive]
     if np.shape(lambdas_fns_negative) == ():
@@ -282,6 +301,81 @@ def betting_cs(
     return l, u
 
 
+betting_cs = betting_twosided_cs
+
+
+def betting_lower_cs(
+    x,
+    lambdas_fns=None,
+    alpha=0.05,
+    N=None,
+    breaks=1000,
+    running_intersection=False,
+    parallel=False,
+    trunc_scale=1 / 2,
+    m_trunc=True,
+):
+    """
+    Betting-based lower confidence sequence
+
+    Parameters
+    ----------
+    x, array-like
+        The vector of nonnegative observations.
+
+    alpha, real
+        Significance level between 0 and 1.
+
+    lambdas_fns, list of bivariate functions or None
+        Function of `x` and `m` which generates an array-like
+        of bets with the same length as `x`.
+
+    N, positive integer or None
+        Population size if sampling WoR
+
+    breaks, positive integer
+        Number of breaks in the grid for constructing the confidence sequence
+
+    running_intersection, boolean
+        Should the running intersection be taken?
+
+    parallel, boolean
+        Should computation be parallelized?
+
+    trunc_scale, (0, 1]-valued real
+        The factor by which to multiply the truncation defined
+        in `m_trunc`. Leaving this as 1 will perform no
+        additional truncation.
+
+    m_trunc, boolean
+        Should truncation be used based on m? If True, then truncation
+        will be given by trunc_scale * 1/m or trunc_scale * 1/(1-m)
+        depending on the capital process. If False, then truncation
+        will be given by trunc_scale.
+
+
+    Returns
+    -------
+    l, array-like
+        Lower confidence sequence for the [0, 1]-bounded mean
+    """
+    l, _ = betting_twosided_cs(
+        x,
+        lambdas_fns_positive=lambdas_fns,
+        alpha=alpha,
+        N=N,
+        breaks=breaks,
+        running_intersection=running_intersection,
+        parallel=parallel,
+        convex_comb=False,
+        theta=1,
+        trunc_scale=trunc_scale,
+        m_trunc=m_trunc,
+    )
+
+    return l
+
+
 def diversified_betting_mart(
     x,
     m,
@@ -313,46 +407,47 @@ def diversified_betting_mart(
         lambdas_fn_positive = lambdas_fns_positive[k]
         lambdas_fn_negative = lambdas_fns_negative[k]
 
-        summand_positive = (
-            (
-                lambdas_weights[k]
-                * betting_mart(
-                    x,
-                    m,
-                    alpha=alpha,
-                    lambdas_fn_positive=lambdas_fn_positive,
-                    lambdas_fn_negative=lambdas_fn_negative,
-                    N=N,
-                    theta=1,
-                    trunc_scale=trunc_scale,
-                    m_trunc=m_trunc,
+        if theta > 0:
+            summand_positive = (
+                (
+                    lambdas_weights[k]
+                    * betting_mart(
+                        x,
+                        m,
+                        alpha=alpha,
+                        lambdas_fn_positive=lambdas_fn_positive,
+                        lambdas_fn_negative=lambdas_fn_negative,
+                        N=N,
+                        theta=1,
+                        trunc_scale=trunc_scale,
+                        m_trunc=m_trunc,
+                    )
                 )
+                if lambdas_weights[k] != 0
+                else 0
             )
-            if lambdas_weights[k] != 0
-            else 0
-        )
+            mart_positive = mart_positive + summand_positive
 
-        mart_positive = mart_positive + summand_positive
-
-        summand_negative = (
-            (
-                lambdas_weights[k]
-                * betting_mart(
-                    x,
-                    m,
-                    alpha=alpha,
-                    lambdas_fn_positive=lambdas_fn_positive,
-                    lambdas_fn_negative=lambdas_fn_negative,
-                    N=N,
-                    theta=0,
-                    trunc_scale=trunc_scale,
-                    m_trunc=m_trunc,
+        if theta < 1:
+            summand_negative = (
+                (
+                    lambdas_weights[k]
+                    * betting_mart(
+                        x,
+                        m,
+                        alpha=alpha,
+                        lambdas_fn_positive=lambdas_fn_positive,
+                        lambdas_fn_negative=lambdas_fn_negative,
+                        N=N,
+                        theta=0,
+                        trunc_scale=trunc_scale,
+                        m_trunc=m_trunc,
+                    )
                 )
+                if lambdas_weights[k] != 0
+                else 0
             )
-            if lambdas_weights[k] != 0
-            else 0
-        )
-        mart_negative = mart_negative + summand_negative
+            mart_negative = mart_negative + summand_negative
 
     if theta == 1:
         mart = mart_positive
