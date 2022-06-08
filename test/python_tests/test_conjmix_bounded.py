@@ -18,7 +18,7 @@ def test_nested_cs():
     assert all([all(upper_CSs[i] >= upper_CSs[i]) for i in range(len(alphas) - 1)])
 
     confseqs_eb = map(
-        lambda alpha: conjmix_empbern_cs(x, v_opt=500 / 4, alpha=alpha), alphas
+        lambda alpha: conjmix_empbern_twosided_cs(x, v_opt=500 / 4, alpha=alpha), alphas
     )
     lower_CSs, upper_CSs = zip(*confseqs_eb)
 
@@ -33,7 +33,7 @@ def test_lower_and_two_sided_cs():
     x = np.random.beta(1, 1, n)
     alpha = 0.1
 
-    lower_twosided, upper_twosided = conjmix_empbern_cs(
+    lower_twosided, upper_twosided = conjmix_empbern_twosided_cs(
         x, alpha=alpha, running_intersection=False, v_opt=n / 40
     )
 

@@ -3,29 +3,31 @@ from typing import Callable, Sequence, Tuple, Union
 import numpy as np
 from confseq.betting_strategies import lambda_predmix_eb
 from confseq.misc import get_running_intersection, get_ci_seq
+from confseq.types import RealArray
+import warnings
 
 
-def predmix_upper_cs(
-    x: Sequence[float],
-    v: Sequence[float],
-    lambdas_fn: Callable[[Sequence[float]], Sequence[float]],
-    psi_fn: Callable[[Sequence[float]], Sequence[float]],
+def predmix_lower_cs(
+    x: RealArray,
+    v: RealArray,
+    lambdas_fn: Callable[[RealArray], RealArray],
+    psi_fn: Callable[[RealArray], RealArray],
     alpha: float = 0.05,
     running_intersection: bool = False,
     N: Union[int, None] = None,
-) -> Sequence[float]:
+) -> RealArray:
     """
-    Predictable mixture upper confidence sequence
+    Predictable mixture lower confidence sequence
 
     Parameters
     ----------
-    x : Sequence[float]
-        Observations in [0, 1]
-    v : Sequence[float]
+    x : RealArray
+        Observations >= 0
+    v : RealArray
         Variance increment (1 for Hoeffding, (x - muhat_{t-1})^2 for empbern)
-    lambdas_fn : Callable[[Sequence[float]], Sequence[float]]
+    lambdas_fn : Callable[[RealArray], RealArray]
         Function to produce lambda values
-    psi_fn : Callable[[Sequence[float]], Sequence[float]]
+    psi_fn : Callable[[RealArray], RealArray]
         psi function
     alpha : float, optional
         Significance level, by default 0.05
@@ -36,8 +38,8 @@ def predmix_upper_cs(
 
     Returns
     -------
-    Sequence[float]
-        Upper confidence sequence
+    RealArray
+        Lower confidence sequence
     """
     x = np.array(x)
 
@@ -61,27 +63,27 @@ def predmix_upper_cs(
         lambdas * (1 + Wstar)
     )
 
-    u = weighted_mu_hat_t + margin
+    u = weighted_mu_hat_t - margin
     u = np.minimum(u, 1)
 
     return np.minimum.accumulate(u) if running_intersection else u
 
 
-def predmix_empbern_upper_cs(
-    x: Sequence[float],
+def predmix_empbern_lower_cs(
+    x: RealArray,
     alpha: float = 0.05,
     truncation: float = 1 / 2,
     running_intersection: bool = False,
     N: Union[int, None] = None,
     fixed_n: Union[int, None] = None,
-) -> Sequence[float]:
+) -> RealArray:
     """
-    Predictable mixture empirical Bernstein upper confidence sequence
+    Predictable mixture empirical Bernstein lower confidence sequence
 
     Parameters
     ----------
-    x : Sequence[float]
-        Observations in [0, 1]
+    x : RealArray
+        Observations in [0, inf]
     alpha : float, optional
         Significance level, by default 0.05
     truncation : float, optional
@@ -95,14 +97,14 @@ def predmix_empbern_upper_cs(
 
     Returns
     -------
-    Sequence[float]
-        Upper confidence sequence
+    RealArray
+        Lower confidence sequence
     """
     t = np.arange(1, len(x) + 1)
     mu_hat_t = np.cumsum(x) / t
     mu_hat_tminus1 = np.append(0, mu_hat_t[0 : (len(x) - 1)])
     v = np.power(x - mu_hat_tminus1, 2)
-    return predmix_upper_cs(
+    return predmix_lower_cs(
         x,
         v=v,
         lambdas_fn=lambda y: lambda_predmix_eb(
@@ -115,21 +117,21 @@ def predmix_empbern_upper_cs(
     )
 
 
-def predmix_hoeffding_upper_cs(
-    x: Sequence[float],
+def predmix_hoeffding_lower_cs(
+    x: RealArray,
     alpha: float = 0.05,
     truncation: float = 1,
     running_intersection: bool = False,
     N: Union[int, None] = None,
     fixed_n: Union[int, None] = None,
-) -> Sequence[float]:
+) -> RealArray:
     """
-    Predictable mixture Hoeffding upper confidence sequence
+    Predictable mixture Hoeffding lower confidence sequence
 
     Parameters
     ----------
-    x : Sequence[float]
-        Observations in [0, 1]
+    x : RealArray
+        Observations in [0, inf]
     alpha : float, optional
         Significance level, by default 0.05
     truncation : float, optional
@@ -143,8 +145,8 @@ def predmix_hoeffding_upper_cs(
 
     Returns
     -------
-    Sequence[float]
-        Upper confidence sequence
+    RealArray
+        Lower confidence sequence
     """
     t = np.arange(1, len(x) + 1)
     if fixed_n is not None:
@@ -155,7 +157,7 @@ def predmix_hoeffding_upper_cs(
         lambdas_fn = lambda y: np.minimum(
             np.sqrt(8 * np.log(1 / alpha) / (t * np.log(1 + t))), truncation
         )
-    return predmix_upper_cs(
+    return predmix_lower_cs(
         x,
         v=1,
         lambdas_fn=lambdas_fn,
@@ -167,19 +169,19 @@ def predmix_hoeffding_upper_cs(
 
 
 def predmix_hoeffding_cs(
-    x: Sequence[float],
+    x: RealArray,
     alpha: float = 0.05,
     truncation: float = 1,
     running_intersection: bool = False,
     N: Union[int, None] = None,
     fixed_n: Union[int, None] = None,
-) -> Tuple[Sequence[float], Sequence[float]]:
+) -> Tuple[RealArray, RealArray]:
     """
     Predictable mixture Hoeffding confidence sequence
 
     Parameters
     ----------
-    x : Sequence[float]
+    x : RealArray
         Observations in [0, 1]
     alpha : float, optional
         Significance level, by default 0.05
@@ -194,10 +196,10 @@ def predmix_hoeffding_cs(
 
     Returns
     -------
-    Tuple[Sequence[float], Sequence[float]]
+    Tuple[RealArray, RealArray]
         Confidence sequence
     """
-    upper_cs = predmix_hoeffding_upper_cs(
+    lower_cs = predmix_hoeffding_lower_cs(
         x,
         alpha=alpha / 2,
         truncation=truncation,
@@ -205,7 +207,7 @@ def predmix_hoeffding_cs(
         N=N,
         fixed_n=fixed_n,
     )
-    lower_cs = 1 - predmix_hoeffding_upper_cs(
+    lower_cs = 1 - predmix_hoeffding_lower_cs(
         1 - x,
         alpha=alpha / 2,
         truncation=truncation,
@@ -214,23 +216,23 @@ def predmix_hoeffding_cs(
         fixed_n=fixed_n,
     )
 
-    return lower_cs, upper_cs
+    return lower_cs, lower_cs
 
 
-def predmix_empbern_cs(
-    x: Sequence[float],
+def predmix_empbern_twosided_cs(
+    x: RealArray,
     alpha: float = 0.05,
     truncation: float = 1 / 2,
     running_intersection: bool = False,
     N: Union[int, None] = None,
     fixed_n: Union[int, None] = None,
-) -> Tuple[Sequence[float], Sequence[float]]:
+) -> Tuple[RealArray, RealArray]:
     """
     Predictable mixture empirical Bernstein confidence sequence
 
     Parameters
     ----------
-    x : Sequence[float]
+    x : RealArray
         Observations in [0, 1]
     alpha : float, optional
         Significance level, by default 0.05
@@ -245,10 +247,10 @@ def predmix_empbern_cs(
 
     Returns
     -------
-    Tuple[Sequence[float], Sequence[float]]
+    Tuple[RealArray, RealArray]
         Confidence sequence
     """
-    u = predmix_empbern_upper_cs(
+    l = predmix_empbern_lower_cs(
         x=x,
         alpha=alpha / 2,
         truncation=truncation,
@@ -256,7 +258,7 @@ def predmix_empbern_cs(
         N=N,
         fixed_n=fixed_n,
     )
-    l = 1 - predmix_empbern_upper_cs(
+    u = 1 - predmix_empbern_lower_cs(
         x=1 - x,
         alpha=alpha / 2,
         truncation=truncation,
@@ -268,8 +270,30 @@ def predmix_empbern_cs(
     return l, u
 
 
+def predmix_empbern_cs(
+    x: RealArray,
+    alpha: float = 0.05,
+    truncation: float = 1 / 2,
+    running_intersection: bool = False,
+    N: Union[int, None] = None,
+    fixed_n: Union[int, None] = None,
+):
+    warnings.warn(
+        "predmix_empbern_cs is deprecated. Please use predmix_empbern_twosided_cs instead.",
+        DeprecationWarning,
+    )
+    return predmix_empbern_twosided_cs(
+        x,
+        alpha=alpha,
+        truncation=truncation,
+        running_intersection=running_intersection,
+        N=N,
+        fixed_n=fixed_n,
+    )
+
+
 def predmix_hoeffding_ci(
-    x: Sequence[float],
+    x: RealArray,
     alpha: float = 0.05,
     N: Union[int, None] = None,
     running_intersection: bool = True,
@@ -287,7 +311,7 @@ def predmix_hoeffding_ci(
 
 
 def predmix_hoeffding_ci_seq(
-    x: Sequence[float],
+    x: RealArray,
     times: Sequence[int],
     alpha: float = 0.05,
     N: Union[int, None] = None,
@@ -306,7 +330,7 @@ def predmix_hoeffding_ci_seq(
 
 
 def predmix_empbern_ci(
-    x: Sequence[float],
+    x: RealArray,
     alpha: float = 0.05,
     truncation: float = 1 / 2,
     N: Union[int, None] = None,
@@ -324,7 +348,7 @@ def predmix_empbern_ci(
 
 
 def predmix_empbern_ci_seq(
-    x: Sequence[float],
+    x: RealArray,
     times: Sequence[int],
     alpha: float = 0.05,
     truncation: float = 1 / 2,
