@@ -5,6 +5,11 @@ venv_confseq/
 
 test/visual_tests/*.pdf
 
+### CMake-related
+CMakeFiles
+Makefile
+cmake_install.cmake
+
 ### From GitHub's Python.gitignore https://github.com/github/gitignore/blob/master/Python.gitignore ###
 
 # Byte-compiled / optimized / DLL files
