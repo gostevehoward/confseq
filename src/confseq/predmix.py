@@ -21,7 +21,7 @@ def predmix_lower_cs(
     Parameters
     ----------
     x : RealArray
-        Observations in [0, 1]
+        Observations >= 0
     v : RealArray
         Variance increment (1 for Hoeffding, (x - muhat_{t-1})^2 for empbern)
     lambdas_fn : Callable[[RealArray], RealArray]
@@ -82,7 +82,7 @@ def predmix_empbern_lower_cs(
     Parameters
     ----------
     x : RealArray
-        Observations in [0, 1]
+        Observations in [0, inf]
     alpha : float, optional
         Significance level, by default 0.05
     truncation : float, optional
@@ -130,7 +130,7 @@ def predmix_hoeffding_lower_cs(
     Parameters
     ----------
     x : RealArray
-        Observations in [0, 1]
+        Observations in [0, inf]
     alpha : float, optional
         Significance level, by default 0.05
     truncation : float, optional
