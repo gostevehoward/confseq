@@ -4,7 +4,6 @@ import numpy as np
 from confseq.betting import *
 from confseq.misc import superMG_crossing_fraction, expand_grid
 from scipy.stats import binomtest
-from itertools import permutations
 
 
 @pytest.mark.random
@@ -176,7 +175,7 @@ def test_onesided_cs():
     alpha = 0.5
     theta = 1 / 2
 
-    lower_twosided, upper_twosided = betting_twosided_cs(
+    lower_twosided, upper_twosided = betting_cs(
         x,
         alpha=alpha,
         running_intersection=False,

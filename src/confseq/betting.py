@@ -183,7 +183,7 @@ def betting_mart(
     return capital_process
 
 
-def betting_twosided_cs(
+def betting_cs(
     x,
     lambdas_fns_positive=None,
     lambdas_fns_negative=None,
@@ -301,8 +301,6 @@ def betting_twosided_cs(
     return l, u
 
 
-betting_cs = betting_twosided_cs
-
 
 def betting_lower_cs(
     x,
@@ -359,7 +357,7 @@ def betting_lower_cs(
     l, array-like
         Lower confidence sequence for the [0, 1]-bounded mean
     """
-    l, _ = betting_twosided_cs(
+    l, _ = betting_cs(
         x,
         lambdas_fns_positive=lambdas_fns,
         alpha=alpha,

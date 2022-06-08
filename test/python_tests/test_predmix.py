@@ -47,7 +47,7 @@ def test_lambda_predmix_eb():
 
 def test_predmix_confidence_sequences():
     x = np.random.binomial(1, 0.5, 10000)
-    l, u = predmix_empbern_cs(x)
+    l, u = predmix_empbern_twosided_cs(x)
     # Check that u > l always
     assert all(u > l)
 
@@ -66,9 +66,9 @@ def test_predmix_confidence_sequences():
     )
 
     # Check that empirical Bernstein CSs are nested wrt alpha
-    l_alpha1, u_alpha1 = predmix_empbern_cs(x, alpha=0.01)
-    l_alpha2, u_alpha2 = predmix_empbern_cs(x, alpha=0.05)
-    l_alpha3, u_alpha3 = predmix_empbern_cs(x, alpha=0.1)
+    l_alpha1, u_alpha1 = predmix_empbern_twosided_cs(x, alpha=0.01)
+    l_alpha2, u_alpha2 = predmix_empbern_twosided_cs(x, alpha=0.05)
+    l_alpha3, u_alpha3 = predmix_empbern_twosided_cs(x, alpha=0.1)
     assert all(
         np.logical_and(
             u_alpha1 - l_alpha1 >= u_alpha2 - l_alpha2,
@@ -85,7 +85,7 @@ def test_predmix_cs_power():
     x = np.random.binomial(1, 0.5, n)
 
     l_h, u_h = predmix_hoeffding_cs(x)
-    l_eb, u_eb = predmix_empbern_cs(x)
+    l_eb, u_eb = predmix_empbern_twosided_cs(x)
 
     assert (u_h - l_h)[n - 1] < (u_eb - l_eb)[n - 1]
 
@@ -96,6 +96,6 @@ def test_predmix_cs_power():
     x = np.random.beta(10, 10, n)
 
     l_h, u_h = predmix_hoeffding_cs(x)
-    l_eb, u_eb = predmix_empbern_cs(x)
+    l_eb, u_eb = predmix_empbern_twosided_cs(x)
 
     assert (u_h - l_h)[n - 1] > (u_eb - l_eb)[n - 1]

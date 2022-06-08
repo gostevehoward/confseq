@@ -4,6 +4,7 @@ import numpy as np
 from confseq.betting_strategies import lambda_predmix_eb
 from confseq.misc import get_running_intersection, get_ci_seq
 from confseq.types import RealArray
+import warnings
 
 
 def predmix_lower_cs(
@@ -218,7 +219,7 @@ def predmix_hoeffding_cs(
     return lower_cs, lower_cs
 
 
-def predmix_empbern_cs(
+def predmix_empbern_twosided_cs(
     x: RealArray,
     alpha: float = 0.05,
     truncation: float = 1 / 2,
@@ -267,6 +268,28 @@ def predmix_empbern_cs(
     )
 
     return l, u
+
+
+def predmix_empbern_cs(
+    x: RealArray,
+    alpha: float = 0.05,
+    truncation: float = 1 / 2,
+    running_intersection: bool = False,
+    N: Union[int, None] = None,
+    fixed_n: Union[int, None] = None,
+):
+    warnings.warn(
+        "predmix_empbern_cs is deprecated. Please use predmix_empbern_twosided_cs instead.",
+        DeprecationWarning,
+    )
+    return predmix_empbern_twosided_cs(
+        x,
+        alpha=alpha,
+        truncation=truncation,
+        running_intersection=running_intersection,
+        N=N,
+        fixed_n=fixed_n,
+    )
 
 
 def predmix_hoeffding_ci(
