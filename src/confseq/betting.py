@@ -81,12 +81,12 @@ def betting_mart(
 
     assert 0 <= theta <= 1
 
-    if theta < 1 and not all(x >= 0):
-        raise ValueError("Cannot use theta < 1 with data that is not lower-bounded.")
-    elif theta > 0 and not all(x <= 1):
-        raise ValueError("Cannot use theta > 1 with data that is not upper-bounded.")
+    if theta == 1:
+        assert(all(x >= 0))
+    elif theta == 0:
+        assert(all(x <= 1))
     else:
-        assert all(x >= 0) and all(x <= 1)
+        assert(all(x >= 0) and all(x <= 1))
 
     if lambdas_fn_positive is None:
         lambdas_fn_positive = lambda x, m: lambda_predmix_eb(x, alpha=alpha * theta)

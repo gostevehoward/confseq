@@ -63,10 +63,10 @@ def predmix_lower_cs(
         lambdas * (1 + Wstar)
     )
 
-    u = weighted_mu_hat_t - margin
-    u = np.minimum(u, 1)
+    l = weighted_mu_hat_t - margin
+    l = np.maximum(l, 0)
 
-    return np.minimum.accumulate(u) if running_intersection else u
+    return np.maximum.accumulate(l) if running_intersection else l
 
 
 def predmix_empbern_lower_cs(
@@ -207,7 +207,7 @@ def predmix_hoeffding_cs(
         N=N,
         fixed_n=fixed_n,
     )
-    lower_cs = 1 - predmix_hoeffding_lower_cs(
+    upper_cs = 1 - predmix_hoeffding_lower_cs(
         1 - x,
         alpha=alpha / 2,
         truncation=truncation,
@@ -216,7 +216,7 @@ def predmix_hoeffding_cs(
         fixed_n=fixed_n,
     )
 
-    return lower_cs, lower_cs
+    return lower_cs, upper_cs
 
 
 def predmix_empbern_twosided_cs(

@@ -161,9 +161,7 @@ def plot_cs(
 
     grid = np.arange(0, 1.01, step=0.01)
 
-    plt.rcParams["font.family"] = "serif"
-    plt.rcParams["mathtext.fontset"] = "dejavuserif"
-    plt.rcParams["font.size"] = 13
+
     if include_density:
         fig, axs = plt.subplots(1, 3, figsize=(12, 3))
         # Index of the density plot in the 'axs' object
@@ -187,6 +185,10 @@ def plot_cs(
         axs_cs_idx = 0
         # Index of the width plot in the 'axs' object
         axs_width_idx = 1
+
+    # plt.rcParams["font.size"] = 13
+    # plt.rcParams["font.family"] = "serif"
+    # plt.rcParams["mathtext.fontset"] = "dejavuserif"
 
     for cs_obj in cs_list:
         l_avg = l_mtx_dict[cs_obj.name].mean(axis=0)
@@ -241,6 +243,9 @@ def plot_cs(
     axs[axs_cs_idx].xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
     axs[axs_width_idx].xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
 
+    matplotlib.rcParams.update({'font.family': "serif"})
+    matplotlib.rcParams.update({'font.size': 13})
+    matplotlib.rcParams.update({'mathtext.fontset': "dejavuserif"})
     plt.tight_layout()
     if include_legend:
         if legend_outside_plot:
