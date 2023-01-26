@@ -76,6 +76,7 @@ def predmix_empbern_lower_cs(
     running_intersection: bool = False,
     N: Union[int, None] = None,
     fixed_n: Union[int, None] = None,
+    truncate_mean=False,
 ) -> RealArray:
     """
     Predictable mixture empirical Bernstein lower confidence sequence
@@ -101,7 +102,7 @@ def predmix_empbern_lower_cs(
         Lower confidence sequence
     """
     t = np.arange(1, len(x) + 1)
-    mu_hat_t = np.cumsum(x) / t
+    mu_hat_t = np.minimum(np.cumsum(x) / t, 1) if truncate_mean else np.cumsum(x) / t
     mu_hat_tminus1 = np.append(0, mu_hat_t[0 : (len(x) - 1)])
     v = np.power(x - mu_hat_tminus1, 2)
     return predmix_lower_cs(

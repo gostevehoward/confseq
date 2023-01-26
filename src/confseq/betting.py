@@ -81,12 +81,12 @@ def betting_mart(
 
     assert 0 <= theta <= 1
 
-    if theta == 1:
-        assert(all(x >= 0))
-    elif theta == 0:
-        assert(all(x <= 1))
-    else:
-        assert(all(x >= 0) and all(x <= 1))
+    # if theta == 1:
+    #     assert all(x >= 0)
+    # elif theta == 0:
+    #     assert all(x <= 1)
+    # else:
+    #     assert all(x >= 0) and all(x <= 1)
 
     if lambdas_fn_positive is None:
         lambdas_fn_positive = lambda x, m: lambda_predmix_eb(x, alpha=alpha * theta)
@@ -112,7 +112,9 @@ def betting_mart(
         if m_trunc:
             with np.errstate(divide="ignore"):
                 lambdas_positive = np.minimum(lambdas_positive, trunc_scale / mu_t)
-                lambdas_positive = np.maximum(lambdas_positive, -trunc_scale / (1 - mu_t))
+                lambdas_positive = np.maximum(
+                    lambdas_positive, -trunc_scale / (1 - mu_t)
+                )
         else:
             lambdas_positive = np.minimum(lambdas_positive, trunc_scale)
             lambdas_positive = np.maximum(lambdas_positive, -trunc_scale)
@@ -138,7 +140,9 @@ def betting_mart(
         lambdas_negative = lambdas_fn_negative(x, m)
         if m_trunc:
             with np.errstate(divide="ignore"):
-                lambdas_negative = np.minimum(lambdas_negative, trunc_scale / (1 - mu_t))
+                lambdas_negative = np.minimum(
+                    lambdas_negative, trunc_scale / (1 - mu_t)
+                )
                 lambdas_negative = np.maximum(lambdas_negative, -trunc_scale / mu_t)
         else:
             lambdas_negative = np.minimum(lambdas_negative, trunc_scale)
@@ -263,9 +267,11 @@ def betting_cs(
 
     if lambdas_fns_positive is None:
         lambdas_fns_positive = lambda x, m: lambda_predmix_eb(x, alpha=alpha * theta)
-    
+
     if lambdas_fns_negative is None:
-        lambdas_fns_negative = lambda x, m: lambda_predmix_eb(x, alpha=alpha * (1-theta))
+        lambdas_fns_negative = lambda x, m: lambda_predmix_eb(
+            x, alpha=alpha * (1 - theta)
+        )
 
     # If only passed a single function, put it into a list
     if np.shape(lambdas_fns_positive) == ():
@@ -299,7 +305,6 @@ def betting_cs(
     )
 
     return l, u
-
 
 
 def betting_lower_cs(
@@ -357,18 +362,27 @@ def betting_lower_cs(
     l, array-like
         Lower confidence sequence for the [0, 1]-bounded mean
     """
-    l, _ = betting_cs(
+    mart_fn = lambda x, m: diversified_betting_mart(
         x,
+        m,
         lambdas_fns_positive=lambdas_fns,
         alpha=alpha,
         N=N,
-        breaks=breaks,
-        running_intersection=running_intersection,
-        parallel=parallel,
         convex_comb=False,
         theta=1,
         trunc_scale=trunc_scale,
         m_trunc=m_trunc,
+    )
+
+    l, _ = cs_from_martingale(
+        x,
+        mart_fn=mart_fn,
+        breaks=breaks,
+        alpha=alpha,
+        N=N,
+        running_intersection=running_intersection,
+        parallel=parallel,
+        log_scale=False,
     )
 
     return l
