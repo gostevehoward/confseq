@@ -362,6 +362,10 @@ def betting_lower_cs(
     l, array-like
         Lower confidence sequence for the [0, 1]-bounded mean
     """
+
+    if lambdas_fns is None:
+        lambdas_fns = [lambda x, m: lambda_predmix_eb(x, alpha=alpha)]
+
     mart_fn = lambda x, m: diversified_betting_mart(
         x,
         m,
