@@ -52,7 +52,7 @@ def lambda_predmix_eb(
         A (numpy) array of lambda values or "bets"
     """
     t = np.arange(1, len(x) + 1)
-    mu_hat_t = (fake_obs * prior_mean + np.cumsum(x)) / (t + fake_obs)
+    mu_hat_t = np.minimum((fake_obs * prior_mean + np.cumsum(x)) / (t + fake_obs), 1)
     mu_hat_tminus1 = np.append(prior_mean, mu_hat_t[0 : (len(x) - 1)])
     sigma2_t = (fake_obs * prior_variance + np.cumsum(np.power(x - mu_hat_t, 2))) / (
         t + fake_obs

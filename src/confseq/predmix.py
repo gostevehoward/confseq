@@ -63,10 +63,10 @@ def predmix_lower_cs(
         lambdas * (1 + Wstar)
     )
 
-    u = weighted_mu_hat_t - margin
-    u = np.minimum(u, 1)
+    l = weighted_mu_hat_t - margin
+    l = np.maximum(l, 0)
 
-    return np.minimum.accumulate(u) if running_intersection else u
+    return np.maximum.accumulate(l) if running_intersection else l
 
 
 def predmix_empbern_lower_cs(
@@ -76,6 +76,7 @@ def predmix_empbern_lower_cs(
     running_intersection: bool = False,
     N: Union[int, None] = None,
     fixed_n: Union[int, None] = None,
+    truncate_mean=False,
 ) -> RealArray:
     """
     Predictable mixture empirical Bernstein lower confidence sequence
@@ -101,7 +102,7 @@ def predmix_empbern_lower_cs(
         Lower confidence sequence
     """
     t = np.arange(1, len(x) + 1)
-    mu_hat_t = np.cumsum(x) / t
+    mu_hat_t = np.minimum(np.cumsum(x) / t, 1) if truncate_mean else np.cumsum(x) / t
     mu_hat_tminus1 = np.append(0, mu_hat_t[0 : (len(x) - 1)])
     v = np.power(x - mu_hat_tminus1, 2)
     return predmix_lower_cs(
@@ -207,7 +208,7 @@ def predmix_hoeffding_cs(
         N=N,
         fixed_n=fixed_n,
     )
-    lower_cs = 1 - predmix_hoeffding_lower_cs(
+    upper_cs = 1 - predmix_hoeffding_lower_cs(
         1 - x,
         alpha=alpha / 2,
         truncation=truncation,
@@ -216,7 +217,7 @@ def predmix_hoeffding_cs(
         fixed_n=fixed_n,
     )
 
-    return lower_cs, lower_cs
+    return lower_cs, upper_cs
 
 
 def predmix_empbern_twosided_cs(
