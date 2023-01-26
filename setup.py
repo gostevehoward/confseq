@@ -16,7 +16,7 @@ except ImportError:
 
 from setuptools import find_packages
 
-__version__ = '0.0.10'
+__version__ = '0.0.11'
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
