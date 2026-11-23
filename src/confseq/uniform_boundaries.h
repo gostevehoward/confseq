@@ -471,8 +471,16 @@ inline double GammaPoissonMixture::get_leading_constant(double rho, double c) {
       - log(boost::math::gamma_q(rho_c_sq, rho_c_sq));
 }
 
+// As with GammaExponentialMixture, the mixture is only defined for s >= 0, as
+// in Proposition 10 of Howard et al. (2021); its closed form breaks down once
+// c * s + v + rho <= 0. NaN is rejected too.
 inline double GammaPoissonMixture::log_superMG(const double s, const double v)
     const {
+  if (!(s >= 0)) {
+    std::ostringstream message;
+    message << "GammaPoissonMixture requires s >= 0, got s = " << s;
+    throw std::domain_error(message.str());
+  }
   const double c_sq = c_ * c_;
   const double v_rho_csq = (v + rho_) / c_sq;
   const double cs_v_rho_csq = s / c_ + v_rho_csq;
