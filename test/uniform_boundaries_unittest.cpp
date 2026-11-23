@@ -36,9 +36,51 @@ TEST(MixtureTest, TestGammaExponentialMixture) {
               1e-5);
 }
 
+TEST(MixtureTest, TestGammaExponentialMixtureRejectsNegativeS) {
+  EXPECT_NEAR(gamma_exponential_log_mixture(0, 100, V_OPT, 2),
+              -1.091487360769498, 1e-9);
+  // -10 is inside the closed form's domain (s > -(v + rho) / c = -57.9) and
+  // -60 is outside it; both are rejected.
+  EXPECT_THROW(gamma_exponential_log_mixture(-1e-12, 100, V_OPT, 2),
+               std::domain_error);
+  EXPECT_THROW(gamma_exponential_log_mixture(-10, 100, V_OPT, 2),
+               std::domain_error);
+  EXPECT_THROW(gamma_exponential_log_mixture(-60, 100, V_OPT, 2),
+               std::domain_error);
+  EXPECT_THROW(gamma_exponential_log_mixture(
+                   std::numeric_limits<double>::quiet_NaN(), 100, V_OPT, 2),
+               std::domain_error);
+  try {
+    gamma_exponential_log_mixture(-60, 100, V_OPT, 2);
+  } catch (const std::domain_error& e) {
+    EXPECT_STREQ(e.what(),
+                 "GammaExponentialMixture requires s >= 0, got s = -60");
+  }
+}
+
 TEST(MixtureTest, TestGammaPoissonMixture) {
   EXPECT_NEAR(gamma_poisson_log_mixture(10, 100, V_OPT, 2), -0.06991219, 1e-5);
   EXPECT_NEAR(gamma_poisson_mixture_bound(100, ALPHA, V_OPT, 2), 30.1949, 1e-5);
+}
+
+TEST(MixtureTest, TestGammaPoissonMixtureRejectsNegativeS) {
+  EXPECT_NEAR(gamma_poisson_log_mixture(0, 100, V_OPT, 2), -0.921036, 1e-5);
+  // -10 is inside the closed form's domain (s > -(v + rho) / c = -57.9) and
+  // -60 is outside it; both are rejected.
+  EXPECT_THROW(gamma_poisson_log_mixture(-1e-12, 100, V_OPT, 2),
+               std::domain_error);
+  EXPECT_THROW(gamma_poisson_log_mixture(-10, 100, V_OPT, 2),
+               std::domain_error);
+  EXPECT_THROW(gamma_poisson_log_mixture(-60, 100, V_OPT, 2),
+               std::domain_error);
+  EXPECT_THROW(gamma_poisson_log_mixture(
+                   std::numeric_limits<double>::quiet_NaN(), 100, V_OPT, 2),
+               std::domain_error);
+  try {
+    gamma_poisson_log_mixture(-60, 100, V_OPT, 2);
+  } catch (const std::domain_error& e) {
+    EXPECT_STREQ(e.what(), "GammaPoissonMixture requires s >= 0, got s = -60");
+  }
 }
 
 TEST(MixtureTest, TestTwoSidedBetaBinomialMixture) {
