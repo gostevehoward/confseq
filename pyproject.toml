@@ -2,8 +2,10 @@
 requires = [
     "setuptools>=42",
     "wheel",
-    "pybind11~=2.6.0",
-    "cmake",
+    # pybind11 < 2.10 does not compile against Python >= 3.11, and NumPy 2
+    # support needs >= 2.12. 2.13 is the first release supporting Python 3.13.
+    "pybind11>=2.13",
+    "cmake>=3.15",
     "scikit-build",
 ]
 
@@ -13,3 +15,22 @@ build-backend = "setuptools.build_meta"
 markers = [
     "random: marks tests as random (deselect with '-m \"not random\"')"
 ]
+
+[tool.cibuildwheel]
+build = ["cp310-*", "cp311-*", "cp312-*", "cp313-*", "cp314-*"]
+skip = ["*-musllinux_*"]
+# Use the pinned, downloaded Boost.Math headers (see CMakeLists.txt) so wheels
+# don't depend on whatever Boost the build image happens to ship.
+environment = { CONFSEQ_FETCH_BOOST = "ON" }
+test-requires = ["pytest"]
+test-command = "pytest {project}/test/python_tests -m \"not random\""
+# macOS x86_64 wheels are cross-built on an arm64 runner; testing them would go
+# through Rosetta, which takes ~12 minutes per Python version.
+test-skip = "*-macosx_x86_64"
+
+[tool.cibuildwheel.linux]
+archs = ["auto64"]
+
+[tool.cibuildwheel.macos]
+# Build both architectures from an arm64 runner (see test-skip above).
+archs = ["arm64", "x86_64"]

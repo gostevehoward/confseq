@@ -24,6 +24,15 @@ USER_DIR = ../src/confseq
 # the compiler doesn't generate warnings in Google Test headers.
 CPPFLAGS += -isystem $(GTEST_DIR)/include
 
+# Homebrew on Apple Silicon installs Boost under /opt/homebrew, which isn't on
+# the compiler's default include path.
+ifeq ($(shell uname -s),Darwin)
+BREW_PREFIX := $(shell brew --prefix 2>/dev/null)
+ifneq ($(BREW_PREFIX),)
+CPPFLAGS += -isystem $(BREW_PREFIX)/include
+endif
+endif
+
 # Flags passed to the C++ compiler.
 CXXFLAGS += -g -Wall -Wextra -pthread --std=c++14 -UNDEBUG
 # All tests produced by this Makefile.  Remember to add new tests you

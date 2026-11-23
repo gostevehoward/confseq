@@ -5,8 +5,8 @@ import multiprocess
 
 
 def get_running_intersection(
-    l: NDArray[np.float_], u: NDArray[np.float_]
-) -> Tuple[NDArray[np.float_], NDArray[np.float_]]:
+    l: NDArray[np.float64], u: NDArray[np.float64]
+) -> Tuple[NDArray[np.float64], NDArray[np.float64]]:
     return np.maximum.accumulate(l), np.minimum.accumulate(u)
 
 
@@ -59,8 +59,8 @@ def get_ci_seq(x, ci_fn, times, parallel=False):
 
 
 def superMG_crossing_fraction(
-    mart_fn: Callable[[NDArray[np.float_]], NDArray[np.float_]],
-    dist_fn: Callable[[], NDArray[np.float_]],
+    mart_fn: Callable[[NDArray[np.float64]], NDArray[np.float64]],
+    dist_fn: Callable[[], NDArray[np.float64]],
     alpha: float,
     repeats: int,
 ) -> float:
