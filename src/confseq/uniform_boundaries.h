@@ -5,6 +5,8 @@
 #include <exception>
 #include <memory>
 #include <set>
+#include <sstream>
+#include <stdexcept>
 #include <vector>
 
 #include <boost/cstdint.hpp>
@@ -440,9 +442,18 @@ inline double GammaExponentialMixture::get_leading_constant(double rho,
       - log(boost::math::gamma_p(rho_c_sq, rho_c_sq));
 }
 
+// The mixture is only defined for s >= 0, as in Proposition 9 of Howard et al.
+// (2021); its closed form breaks down once c * s + v + rho <= 0. Boundaries
+// never need s < 0, since the mixture is increasing in s and at most one at
+// s = 0. NaN is rejected too.
 inline double GammaExponentialMixture::log_superMG(const double s,
                                                    const double v)
     const {
+  if (!(s >= 0)) {
+    std::ostringstream message;
+    message << "GammaExponentialMixture requires s >= 0, got s = " << s;
+    throw std::domain_error(message.str());
+  }
   const double c_sq = c_ * c_;
   const double cs_v_csq = (c_ * s + v) / c_sq;
   const double v_rho_csq = (v + rho_) / c_sq;
